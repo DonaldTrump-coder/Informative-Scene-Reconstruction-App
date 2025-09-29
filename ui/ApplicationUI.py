@@ -1,4 +1,5 @@
-from PyQt5.QtWidgets import QMainWindow, QHBoxLayout, QWidget, QAction, QFileDialog, QActionGroup
+from PyQt5.QtWidgets import QMainWindow, QHBoxLayout, QWidget, QAction, QFileDialog, QActionGroup, QTabWidget, QListWidget, QSplitter
+from PyQt5.QtCore import Qt
 from ui.GLUI import GLWidget
 from render.Thread import RenderThread
 
@@ -7,50 +8,48 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.setWindowTitle("Site Viewer V0.0.0")
         self.resize(800, 600)
+
+        self.tab_widget = QTabWidget(self)
+        page1 = self.create_page_layout()
+        page2 = self.create_page_layout()
+        self.tab_widget.addTab(page1, "页面1")
+        self.tab_widget.addTab(page2, "页面2")
         
         central_widget = QWidget(self)
         layout = QHBoxLayout(central_widget)
-        self.glwidget = GLWidget(self, mainwindow=self)
-        layout.addWidget(self.glwidget)
+        layout.addWidget(self.tab_widget)
         self.setCentralWidget(central_widget)
         self.init_menu()
         self.renderthread = None
 
+    def create_page_layout(self):
+        page_widget = QWidget()
+
+        # 创建水平布局，左侧文件显示区，右侧是图像显示区
+        layout = QHBoxLayout(page_widget)
+
+        splitter = QSplitter(Qt.Horizontal)
+
+        # 文件显示区：QListWidget
+        file_list_widget = QListWidget(page_widget)
+        splitter.addWidget(file_list_widget)  # 左侧显示文件列表
+
+        # 图像显示区：GLWidget
+        gl_widget = GLWidget(page_widget, mainwindow=self)
+        splitter.addWidget(gl_widget)  # 右侧显示图像区域
+
+        splitter.setSizes([int(self.width() * 0.2), int(self.width() * 0.8)])
+        layout.addWidget(splitter)
+
+        return page_widget
+
     def init_menu(self):
         menubar=self.menuBar()
         file_menu=menubar.addMenu("文件")
-        render_menu=menubar.addMenu("渲染")
 
         open_action=QAction("打开", self)
         open_action.triggered.connect(self.Open_file)
         file_menu.addAction(open_action)
-
-        _2DGS_rgb_action=QAction("2DGS 渲染",self)
-        _2DGS_rgb_action.setCheckable(True)
-        _2DGS_rgb_action.triggered.connect(self.set_2DGS_RGB)
-        render_menu.addAction(_2DGS_rgb_action)
-
-        _2DGS_disp_action=QAction("2D Ellipssoid 查看",self)
-        _2DGS_disp_action.setCheckable(True)
-        _2DGS_disp_action.triggered.connect(self.set_2DGS_Disp)
-        render_menu.addAction(_2DGS_disp_action)
-
-        _2DGS_depth_action=QAction("2DGS深度",self)
-        _2DGS_depth_action.setCheckable(True)
-        _2DGS_depth_action.triggered.connect(self.set_2DGS_Depth)
-        render_menu.addAction(_2DGS_depth_action)
-
-        mesh_rgb_action=QAction("Mesh 渲染",self)
-        mesh_rgb_action.setCheckable(True)
-        mesh_rgb_action.triggered.connect(self.set_mesh_RGB)
-        render_menu.addAction(mesh_rgb_action)
-
-        render_group = QActionGroup(self)
-        render_group.setExclusive(True)
-        render_group.addAction(_2DGS_rgb_action)
-        render_group.addAction(_2DGS_disp_action)
-        render_group.addAction(_2DGS_depth_action)
-        render_group.addAction(mesh_rgb_action)
 
     def Open_file(self):
         file_path, _ = QFileDialog.getOpenFileName(self,
