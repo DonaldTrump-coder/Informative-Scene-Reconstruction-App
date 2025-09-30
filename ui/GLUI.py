@@ -31,8 +31,13 @@ class GLWidget(QOpenGLWidget):
         if self.image is None:
             return
         # 转为 QImage，RGB 顺序
-        img = np.transpose(self.image, (1, 2, 0))  # 转为 (H,W,C)
-        img = np.flipud(img).astype(np.uint8)
+        #img = np.transpose(self.image, (1, 2, 0))  # 转为 (H,W,C)
+
+        img = self.image.astype(np.uint8)
+        if img.shape[2] == 4:  # 如果图像是 RGBA 格式
+            img = img[..., :3]  # 只保留 RGB 通道
+        elif img.shape[2] == 3:  # 如果图像是 RGB 格式
+            pass
         h, w, c = img.shape
         qimg = QImage(img.data.tobytes(), w, h, 3 * w, QImage.Format_RGB888)
 

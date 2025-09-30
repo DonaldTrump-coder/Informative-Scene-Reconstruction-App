@@ -10,19 +10,22 @@ class MainWindow(QMainWindow):
         self.resize(800, 600)
 
         self.tab_widget = QTabWidget(self)
-        page1 = self.create_page_layout()
-        page2 = self.create_page_layout()
-        self.tab_widget.addTab(page1, "页面1")
-        self.tab_widget.addTab(page2, "页面2")
+        self.page1 = self.create_page_layout(1)
+        self.page2 = self.create_page_layout(2)
+        self.tab_widget.addTab(self.page1, "页面1")
+        self.tab_widget.addTab(self.page2, "页面2")
+        self.current_gl = getattr(self.page1, 'gl_widget', None)
         
         central_widget = QWidget(self)
         layout = QHBoxLayout(central_widget)
         layout.addWidget(self.tab_widget)
         self.setCentralWidget(central_widget)
         self.init_menu()
-        self.renderthread = None
+        self.renderthread = RenderThread()
+        self.renderthread.frame_ready.connect(self.current_gl.set_image)
+        self.renderthread.start()
 
-    def create_page_layout(self):
+    def create_page_layout(self, page):
         page_widget = QWidget()
 
         # 创建水平布局，左侧文件显示区，右侧是图像显示区
@@ -37,8 +40,14 @@ class MainWindow(QMainWindow):
         # 图像显示区：GLWidget
         gl_widget = GLWidget(page_widget, mainwindow=self)
         splitter.addWidget(gl_widget)  # 右侧显示图像区域
+        setattr(page_widget, 'gl_widget', gl_widget)
 
-        splitter.setSizes([int(self.width() * 0.2), int(self.width() * 0.8)])
+        textWidget = QWidget()
+        if page == 2:
+            splitter.addWidget(textWidget)
+            splitter.setSizes([int(self.width() * 0.2), int(self.width() * 0.6), int(self.width() * 0.2)])
+        else:
+            splitter.setSizes([int(self.width() * 0.2), int(self.width() * 0.8)])
         layout.addWidget(splitter)
 
         return page_widget
@@ -47,32 +56,15 @@ class MainWindow(QMainWindow):
         menubar=self.menuBar()
         file_menu=menubar.addMenu("文件")
 
-        open_action=QAction("打开", self)
-        open_action.triggered.connect(self.Open_file)
+        open_action=QAction("打开图像", self)
+        open_action.triggered.connect(self.Open_images)
         file_menu.addAction(open_action)
 
-    def Open_file(self):
-        file_path, _ = QFileDialog.getOpenFileName(self,
-                                                   "Open File",
-                                                   "",
-                                                   "PointCloudFile (*.ply *.pcd *.obj);;2DGS CheckPoint (*.ckpt);;All (*)")
-        if file_path:
-            self.renderthread = RenderThread(file_path)
-            self.renderthread.frame_ready.connect(self.glwidget.set_image)
-            self.renderthread.start()
+    def Open_images(self):
+        folder_path = QFileDialog.getExistingDirectory(self, "Select Folder")
+        self.renderthread.image_folder = folder_path
+        if folder_path:
+            self.renderthread.get_images() # get all the images in thread
     
-    def set_2DGS_RGB(self, checked):
-        if hasattr(self, 'renderthread'):
-            self.renderthread.set_2DGS_RGB(checked)
-
-    def set_2DGS_Disp(self, checked):
-        if hasattr(self, 'renderthread'):
-            self.renderthread.set_2DGS_Disp(checked)
-
-    def set_2DGS_Depth(self, checked):
-        if hasattr(self, 'renderthread'):
-            self.renderthread.set_2DGS_Depth(checked)
-
-    def set_mesh_RGB(self, checked):
-        if hasattr(self, 'renderthread'):
-            self.renderthread.set_mesh_RGB(checked)
+    def set_3DGS_RGB(self):
+        self.renderthread.set_3DGS_RGB()
