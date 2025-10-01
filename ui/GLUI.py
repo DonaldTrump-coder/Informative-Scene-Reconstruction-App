@@ -2,7 +2,7 @@ from PyQt5.QtWidgets import QOpenGLWidget
 from OpenGL.GL import *
 import numpy as np
 from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QImage, QPainter
+from PyQt5.QtGui import QImage, QPainter, QPixmap
 import cv2
 
 class GLWidget(QOpenGLWidget):
@@ -33,13 +33,13 @@ class GLWidget(QOpenGLWidget):
         # 转为 QImage，RGB 顺序
         #img = np.transpose(self.image, (1, 2, 0))  # 转为 (H,W,C)
 
-        img = self.image.astype(np.uint8)
+        img = np.ascontiguousarray(self.image.astype(np.uint8))
         if img.shape[2] == 4:  # 如果图像是 RGBA 格式
             img = img[..., :3]  # 只保留 RGB 通道
         elif img.shape[2] == 3:  # 如果图像是 RGB 格式
             pass
         h, w, c = img.shape
-        qimg = QImage(img.data.tobytes(), w, h, 3 * w, QImage.Format_RGB888)
+        qimg = QImage(img.data, w, h, 3 * w, QImage.Format_RGB888)
 
         # 计算居中显示位置
         scale = min(self.width() / w, self.height() / h)
@@ -48,7 +48,10 @@ class GLWidget(QOpenGLWidget):
         x0 = (self.width() - disp_w) // 2
         y0 = (self.height() - disp_h) // 2
 
-        painter.drawImage(x0, y0, qimg.scaled(disp_w, disp_h))
+        #painter.drawImage(x0, y0, qimg.scaled(disp_w, disp_h))
+
+        pixmap = QPixmap.fromImage(qimg)
+        painter.drawPixmap(x0, y0, disp_w, disp_h, pixmap)
         painter.end()
 
     def mousePressEvent(self, event):

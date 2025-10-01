@@ -5,10 +5,11 @@ from pathlib import Path
 from render.cameras import get_init_camera
 import torch
 import os
-from PIL import Image
+import cv2
 
 class RenderThread(QThread):
     frame_ready = pyqtSignal(np.ndarray)
+    add_image_list = pyqtSignal(list)
     parser = None
     camera = None
     R = None # [3x3]
@@ -46,6 +47,11 @@ class RenderThread(QThread):
                 self.images.append(file_path)
         self.current_image = self.images[0]
         self.set_simple_image()
+        self.add_image_list.emit(self.images)
+
+    def set_current_image(self, image):
+        self.current_image = image
+        self.set_simple_image()
 
     def move_right(self, step=0.1):
         dir = self.R[0 , :]
@@ -70,8 +76,20 @@ class RenderThread(QThread):
                 pass
 
     def set_simple_image(self):
-        image = Image.open(self.current_image)
-        image = np.array(image)
+        data = np.fromfile(self.current_image, dtype=np.uint8)
+        image = cv2.imdecode(data, cv2.IMREAD_COLOR)
+        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+
+        # downsample to height-500
+        
+        target_height = 400
+        h, w = image.shape[:2]
+        if h>target_height:
+            scale = target_height / h
+            new_w = int(w * scale)
+            new_h = target_height
+            image = cv2.resize(image, (new_w, new_h), interpolation=cv2.INTER_NEAREST)
+
         self.frame_ready.emit(image)
 
     def stop(self):

@@ -1,7 +1,8 @@
-from PyQt5.QtWidgets import QMainWindow, QHBoxLayout, QWidget, QAction, QFileDialog, QActionGroup, QTabWidget, QListWidget, QSplitter
+from PyQt5.QtWidgets import QMainWindow, QHBoxLayout, QWidget, QAction, QFileDialog, QActionGroup, QTabWidget, QListWidget, QSplitter, QListWidgetItem
 from PyQt5.QtCore import Qt
 from ui.GLUI import GLWidget
 from render.Thread import RenderThread
+import os
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -12,9 +13,13 @@ class MainWindow(QMainWindow):
         self.tab_widget = QTabWidget(self)
         self.page1 = self.create_page_layout(1)
         self.page2 = self.create_page_layout(2)
-        self.tab_widget.addTab(self.page1, "页面1")
-        self.tab_widget.addTab(self.page2, "页面2")
+        self.page3 = self.create_page_layout(3)
+        self.tab_widget.addTab(self.page1, "图像输入")
+        self.tab_widget.addTab(self.page2, "点云标注查看")
+        self.tab_widget.addTab(self.page3, "实景生成")
         self.current_gl = getattr(self.page1, 'gl_widget', None)
+        self.current_list = getattr(self.page1, 'list_widget', None)
+        self.current_page = self.page1
         
         central_widget = QWidget(self)
         layout = QHBoxLayout(central_widget)
@@ -23,6 +28,7 @@ class MainWindow(QMainWindow):
         self.init_menu()
         self.renderthread = RenderThread()
         self.renderthread.frame_ready.connect(self.current_gl.set_image)
+        self.renderthread.add_image_list.connect(self.add_Image_names)
         self.renderthread.start()
 
     def create_page_layout(self, page):
@@ -41,9 +47,10 @@ class MainWindow(QMainWindow):
         gl_widget = GLWidget(page_widget, mainwindow=self)
         splitter.addWidget(gl_widget)  # 右侧显示图像区域
         setattr(page_widget, 'gl_widget', gl_widget)
+        setattr(page_widget,'list_widget', file_list_widget)
 
         textWidget = QWidget()
-        if page == 2:
+        if page == 3:
             splitter.addWidget(textWidget)
             splitter.setSizes([int(self.width() * 0.2), int(self.width() * 0.6), int(self.width() * 0.2)])
         else:
@@ -65,6 +72,17 @@ class MainWindow(QMainWindow):
         self.renderthread.image_folder = folder_path
         if folder_path:
             self.renderthread.get_images() # get all the images in thread
+
+    def add_Image_names(self, images:list[str]):
+        for image in images:
+            item = QListWidgetItem(os.path.basename(image))
+            item.setData(Qt.UserRole, image)
+            self.current_list.addItem(item)
+            self.current_list.itemClicked.connect(self.on_image_item_clicked)
+
+    def on_image_item_clicked(self, item):
+        image = item.data(Qt.UserRole)   # 取完整路径
+        self.renderthread.set_current_image(image)
     
     def set_3DGS_RGB(self):
         self.renderthread.set_3DGS_RGB()
