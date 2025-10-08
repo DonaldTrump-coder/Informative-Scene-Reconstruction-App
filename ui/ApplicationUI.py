@@ -1,5 +1,6 @@
-from PyQt5.QtWidgets import QMainWindow, QHBoxLayout, QWidget, QAction, QFileDialog, QActionGroup, QTabWidget, QListWidget, QSplitter, QListWidgetItem
+from PyQt5.QtWidgets import QMainWindow, QHBoxLayout, QWidget, QAction, QFileDialog, QActionGroup, QTabWidget, QListWidget, QSplitter, QListWidgetItem, QVBoxLayout, QPushButton
 from PyQt5.QtCore import Qt
+from PyQt5.QtGui import QIcon
 from ui.GLUI import GLWidget
 from render.Thread import RenderThread
 import os
@@ -9,6 +10,7 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.setWindowTitle("Site Viewer V0.0.0")
         self.resize(800, 600)
+        self.renderthread = RenderThread()
 
         self.tab_widget = QTabWidget(self)
         self.page1 = self.create_page_layout(1)
@@ -26,7 +28,7 @@ class MainWindow(QMainWindow):
         layout.addWidget(self.tab_widget)
         self.setCentralWidget(central_widget)
         self.init_menu()
-        self.renderthread = RenderThread()
+        
         self.renderthread.frame_ready.connect(self.current_gl.set_image)
         self.renderthread.add_image_list.connect(self.add_Image_names)
         self.renderthread.start()
@@ -41,7 +43,20 @@ class MainWindow(QMainWindow):
 
         # 文件显示区：QListWidget
         file_list_widget = QListWidget(page_widget)
-        splitter.addWidget(file_list_widget)  # 左侧显示文件列表
+
+        left_container = QWidget()
+        left_layout = QVBoxLayout(left_container)
+        left_layout.addWidget(file_list_widget)
+        if page == 1:
+            Button_widget = QWidget()
+            left_layout.addWidget(Button_widget)
+            button_layout = QHBoxLayout(Button_widget)
+            button1 = QPushButton("按钮1")
+            button_layout.addWidget(button1)
+            icon1 = QIcon("resources/play.png")
+            button1.setIcon(icon1)
+            button1.clicked.connect(self.renderthread.start_sfm)
+        splitter.addWidget(left_container)  # 左侧显示文件列表
 
         # 图像显示区：GLWidget
         gl_widget = GLWidget(page_widget, mainwindow=self)
@@ -63,9 +78,12 @@ class MainWindow(QMainWindow):
         menubar=self.menuBar()
         file_menu=menubar.addMenu("文件")
 
+        project_action = QAction("创建项目", self)
         open_action=QAction("打开图像", self)
         open_action.triggered.connect(self.Open_images)
+        project_action.triggered.connect(self.renderthread.set_project_path)
         file_menu.addAction(open_action)
+        file_menu.addAction(project_action)
 
     def Open_images(self):
         folder_path = QFileDialog.getExistingDirectory(self, "Select Folder")

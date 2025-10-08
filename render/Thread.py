@@ -6,6 +6,9 @@ from render.cameras import get_init_camera
 import torch
 import os
 import cv2
+from internal.project import rec_project
+from PyQt5.QtWidgets import QFileDialog
+from internal.Colmap.reconstructor import constructor
 
 class RenderThread(QThread):
     frame_ready = pyqtSignal(np.ndarray)
@@ -32,6 +35,16 @@ class RenderThread(QThread):
         self.fy = 933
         self.cx = 960
         self.cy = 540
+        self.project = rec_project()
+
+        self.project_set = False
+
+    def set_project_path(self):
+        # set path from a filedialog
+        self.project_folder = QFileDialog.getExistingDirectory(None, "请选择图像文件夹")
+        if self.project_folder:
+            self.reconstructor = constructor(os.path.join(self.project_folder, "project.db"))
+            self.project_set = True
 
     def set_3DGS_RGB(self):
         self.rendering_mode = Rendering_mode.RENDERING
@@ -82,16 +95,22 @@ class RenderThread(QThread):
 
         # downsample to height-500
         
-        target_height = 400
+        """target_height = 400
         h, w = image.shape[:2]
         if h>target_height:
             scale = target_height / h
             new_w = int(w * scale)
             new_h = target_height
-            image = cv2.resize(image, (new_w, new_h), interpolation=cv2.INTER_NEAREST)
+            image = cv2.resize(image, (new_w, new_h), interpolation=cv2.INTER_NEAREST)"""
 
         self.frame_ready.emit(image)
 
     def stop(self):
         self.running=False
         self.wait()
+
+    def start_sfm(self):
+        # sfm reconstruction with images
+        if self.project_set:
+            self.reconstructor.add_images(self.images)
+            self.reconstructor.sfm()
