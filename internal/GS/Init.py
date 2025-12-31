@@ -1,7 +1,7 @@
-from internal.GS.datasets.colmap import Parser
+from datasets.colmap import Parser
 import torch
 from typing import Dict, Optional, Tuple
-from internal.GS.utils import knn, rgb_to_sh
+from utils import knn, rgb_to_sh
 from gsplat.optimizers import SelectiveAdam
 import math
 

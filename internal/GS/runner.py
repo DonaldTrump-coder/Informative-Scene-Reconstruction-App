@@ -1,9 +1,9 @@
-from internal.GS.data import Config
-from internal.GS.utils import AppearanceOptModule, CameraOptModule, rgb_to_sh, set_random_seed
+from data import Config
+from utils import AppearanceOptModule, CameraOptModule, rgb_to_sh, set_random_seed
 import os
 from torch.utils.tensorboard import SummaryWriter
-from internal.GS.datasets.colmap import Dataset, Parser
-from internal.GS.Init import create_splats_with_optimizers
+from datasets.colmap import Dataset, Parser
+from Init import create_splats_with_optimizers
 from gsplat.strategy import DefaultStrategy, MCMCStrategy
 from typing_extensions import Literal, assert_never
 from gsplat.compression import PngCompression
@@ -14,7 +14,7 @@ from torch.nn.parallel import DistributedDataParallel as DDP
 from torchmetrics.image import PeakSignalNoiseRatio, StructuralSimilarityIndexMeasure
 from torchmetrics.image.lpip import LearnedPerceptualImagePatchSimilarity
 import viser
-from internal.GS.gsplat_viewer import GsplatViewer, GsplatRenderTabState
+from gsplat_viewer import GsplatViewer, GsplatRenderTabState
 from pathlib import Path
 from torch import Tensor
 from typing import Dict, Optional, Tuple
@@ -27,7 +27,7 @@ import numpy as np
 from gsplat import export_splats
 from collections import defaultdict
 import imageio
-from internal.GS.datasets.traj import (
+from datasets.traj import (
     generate_ellipse_path_z,
     generate_interpolated_path,
     generate_spiral_path,
@@ -35,6 +35,7 @@ from internal.GS.datasets.traj import (
 from nerfview import CameraState, RenderTabState, apply_float_colormap
 import tyro
 from gsplat.distributed import cli
+from fused_ssim import fused_ssim
 
 class Runner:
     """Engine for training and testing."""
@@ -290,6 +291,7 @@ class Runner:
                 yaml.dump(vars(cfg), f)
 
         max_steps = cfg.max_steps
+        max_steps=7000
         init_step = 0
 
         schedulers = [
