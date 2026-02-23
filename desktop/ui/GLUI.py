@@ -3,7 +3,6 @@ from OpenGL.GL import *
 import numpy as np
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QImage, QPainter, QPixmap
-import cv2
 
 class GLWidget(QOpenGLWidget):
     def __init__(self, parent, mainwindow):

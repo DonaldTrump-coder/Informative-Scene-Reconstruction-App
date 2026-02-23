@@ -1,0 +1,8 @@
+numpy==1.24
+open3d==0.19.0
+opencv-python-headless==4.5.5.64
+PyOpenGL==3.1.10
+PyOpenGL-accelerate==3.1.10
+PyQt5==5.15.11
+tqdm==4.67.1
+pycolmap

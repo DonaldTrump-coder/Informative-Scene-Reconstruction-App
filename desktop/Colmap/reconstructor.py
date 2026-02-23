@@ -1,6 +1,6 @@
 import os
 import pycolmap
-from internal.Colmap.folder import temp_images
+from desktop.Colmap.folder import temp_images
 
 class constructor:
     def __init__(self, database):

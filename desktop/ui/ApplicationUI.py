@@ -1,8 +1,8 @@
 from PyQt5.QtWidgets import QMainWindow, QHBoxLayout, QWidget, QAction, QFileDialog, QActionGroup, QTabWidget, QListWidget, QSplitter, QListWidgetItem, QVBoxLayout, QPushButton
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QIcon
-from ui.GLUI import GLWidget
-from render.Thread import RenderThread
+from desktop.ui.GLUI import GLWidget
+from desktop.render.Thread import RenderThread
 import os
 
 class MainWindow(QMainWindow):

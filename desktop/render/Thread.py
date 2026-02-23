@@ -1,14 +1,12 @@
 from PyQt5.QtCore import QThread, pyqtSignal
 import numpy as np
-from render.rendermode import Rendering_mode
-from pathlib import Path
-from render.cameras import get_init_camera
-import torch
+from desktop.render.rendermode import Rendering_mode
+from desktop.render.cameras import get_init_camera
 import os
 import cv2
-from internal.project import rec_project
 from PyQt5.QtWidgets import QFileDialog
-from internal.Colmap.reconstructor import constructor
+from desktop.Colmap.reconstructor import constructor
+from desktop.project import rec_project
 
 class RenderThread(QThread):
     frame_ready = pyqtSignal(np.ndarray)
