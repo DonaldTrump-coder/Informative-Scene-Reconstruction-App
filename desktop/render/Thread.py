@@ -7,6 +7,7 @@ import cv2
 from PyQt5.QtWidgets import QFileDialog
 from desktop.Colmap.reconstructor import constructor
 from desktop.project import rec_project
+from desktop.Colmap.pcd import PCD
 
 class RenderThread(QThread):
     frame_ready = pyqtSignal(np.ndarray)
@@ -24,6 +25,8 @@ class RenderThread(QThread):
     image_folder = None
     images = [] # images path list
     current_image = None # current image path
+    sparse_folder = None
+    pcd = None
 
     def __init__(self):
         super().__init__()
@@ -33,6 +36,7 @@ class RenderThread(QThread):
         self.fy = 933
         self.cx = 960
         self.cy = 540
+        self.K = np.array([[self.fx, 0, self.cx], [0, self.fy, self.cy], [0, 0, 1]])
         self.project = rec_project()
 
         self.project_set = False
@@ -43,12 +47,28 @@ class RenderThread(QThread):
         if self.project_folder:
             self.reconstructor = constructor(os.path.join(self.project_folder, "project.db"))
             self.project_set = True
+            self.sparse_folder = os.path.join(self.project_folder, "output", "sparse")
+            
+    def open_project(self):
+        self.project_folder = QFileDialog.getExistingDirectory(None, "请选择项目文件夹")
+        if self.project_folder:
+            self.sparse_folder = os.path.join(self.project_folder, "output", "sparse")
 
     def set_3DGS_RGB(self):
         self.rendering_mode = Rendering_mode.RENDERING
 
     def set_image(self):
         self.rendering_mode = Rendering_mode.IMAGE
+        
+    def set_pcd(self):
+        self.pcd = PCD(
+            os.path.join(self.sparse_folder, "0", "cameras.bin"),
+            os.path.join(self.sparse_folder, "0", "images.bin"),
+            os.path.join(self.sparse_folder, "0", "points3D.bin")
+            )
+        self.R, self.T = self.pcd.get_extrinsics_init()
+        self.pcd.set_camera(self.R, self.T, self.H, self.W, self.K)
+        self.rendering_mode = Rendering_mode.PCD
 
     def get_images(self):
         supported_extensions = ['.png', '.jpg', '.jpeg', '.bmp', '.gif', '.tiff', '.ppm']
@@ -85,6 +105,10 @@ class RenderThread(QThread):
             # rendering cores:
             if self.rendering_mode is Rendering_mode.NONE or self.rendering_mode is Rendering_mode.IMAGE:
                 pass
+            if self.rendering_mode is Rendering_mode.PCD:
+                self.pcd.set_camera(self.R, self.T, self.H, self.W, self.K)
+                image = self.pcd.render()
+                self.frame_ready.emit(image)
 
     def set_simple_image(self):
         data = np.fromfile(self.current_image, dtype=np.uint8)

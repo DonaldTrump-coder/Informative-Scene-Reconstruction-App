@@ -22,19 +22,19 @@ class constructor:
 
     def sfm(self):
         os.makedirs(os.path.join(os.path.dirname(self.db),"output","sparse"))
-        sift_options = pycolmap.SiftExtractionOptions(
+        sift_options = pycolmap.FeatureExtractionOptions(
             use_gpu=False,         # 是否使用 GPU
             num_threads=4          # 提取特征线程数
         )
         pycolmap.extract_features(database_path=self.db,
                                   image_path=self.image_path,
-                                  sift_options=sift_options)
+                                  extraction_options=sift_options)
         pycolmap.match_sequential(self.db)
         reconstruction = pycolmap.incremental_mapping(
         database_path=self.db,
         image_path=self.image_path,
         output_path=os.path.join(os.path.dirname(self.db),"output","sparse")
-    )
+        )
         
 if __name__ == "__main__":
     cons = constructor("C:\\Users\\10527\\Desktop\\project.db")

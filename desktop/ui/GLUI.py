@@ -3,6 +3,7 @@ from OpenGL.GL import *
 import numpy as np
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QImage, QPainter, QPixmap
+import time
 
 class GLWidget(QOpenGLWidget):
     def __init__(self, parent, mainwindow):
@@ -23,6 +24,7 @@ class GLWidget(QOpenGLWidget):
         self.update()
 
     def paintGL(self):
+        start = time.time()
         self.makeCurrent()  # 确保当前上下文
         painter = QPainter(self)
         # 背景填充黑色
@@ -52,6 +54,9 @@ class GLWidget(QOpenGLWidget):
         pixmap = QPixmap.fromImage(qimg)
         painter.drawPixmap(x0, y0, disp_w, disp_h, pixmap)
         painter.end()
+        end = time.time()
+        dt = end - start
+        FPS = 1 / dt
 
     def mousePressEvent(self, event):
         self.setFocus()

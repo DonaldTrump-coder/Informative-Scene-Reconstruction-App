@@ -19,6 +19,8 @@ class MainWindow(QMainWindow):
         self.tab_widget.addTab(self.page1, "图像输入")
         self.tab_widget.addTab(self.page2, "点云标注查看")
         self.tab_widget.addTab(self.page3, "实景生成")
+        self.tab_widget.currentChanged.connect(self.on_tab_changed)
+        
         self.current_gl = getattr(self.page1, 'gl_widget', None)
         self.current_list = getattr(self.page1, 'list_widget', None)
         self.current_page = self.page1
@@ -73,17 +75,40 @@ class MainWindow(QMainWindow):
         layout.addWidget(splitter)
 
         return page_widget
+    
+    def on_tab_changed(self, index):
+        if index == 0:
+            self.set_image()
+            self.current_gl = getattr(self.page1, 'gl_widget', None)
+            self.current_list = getattr(self.page1, 'list_widget', None)
+            self.current_page = self.page1
+            self.renderthread.frame_ready.connect(self.current_gl.set_image)
+        elif index == 1:
+            self.set_pcd()
+            self.current_gl = getattr(self.page2, 'gl_widget', None)
+            self.current_list = getattr(self.page2, 'list_widget', None)
+            self.current_page = self.page2
+            self.renderthread.frame_ready.connect(self.current_gl.set_image)
+        elif index == 2:
+            self.set_3DGS_RGB()
+            self.current_gl = getattr(self.page3, 'gl_widget', None)
+            self.current_list = getattr(self.page3, 'list_widget', None)
+            self.current_page = self.page3
+            self.renderthread.frame_ready.connect(self.current_gl.set_image)
 
     def init_menu(self):
         menubar=self.menuBar()
         file_menu=menubar.addMenu("文件")
 
         project_action = QAction("创建项目", self)
+        open_project_action = QAction("打开项目", self)
         open_action=QAction("打开图像", self)
         open_action.triggered.connect(self.Open_images)
         project_action.triggered.connect(self.renderthread.set_project_path)
+        open_project_action.triggered.connect(self.renderthread.open_project)
         file_menu.addAction(open_action)
         file_menu.addAction(project_action)
+        file_menu.addAction(open_project_action)
 
     def Open_images(self):
         folder_path = QFileDialog.getExistingDirectory(self, "Select Folder")
@@ -101,6 +126,12 @@ class MainWindow(QMainWindow):
     def on_image_item_clicked(self, item):
         image = item.data(Qt.UserRole)   # 取完整路径
         self.renderthread.set_current_image(image)
+        
+    def set_image(self):
+        self.renderthread.set_image()
     
     def set_3DGS_RGB(self):
         self.renderthread.set_3DGS_RGB()
+        
+    def set_pcd(self):
+        self.renderthread.set_pcd()
