@@ -59,14 +59,5 @@ class GLWidget(QOpenGLWidget):
         FPS = 1 / dt
 
     def mousePressEvent(self, event):
-        self.setFocus()
-
-    def keyPressEvent(self, event):
-        if event.key() == Qt.Key_D:
-            self.main_window.renderthread.move_right()
-        if event.key() == Qt.Key_W:
-            self.main_window.renderthread.move_forward()
-        if event.key() == Qt.Key_S:
-            self.main_window.renderthread.move_back()
-        if event.key() == Qt.Key_A:
-            self.main_window.renderthread.move_left()
+        self.main_window.setFocus()
+        super().mousePressEvent(event)

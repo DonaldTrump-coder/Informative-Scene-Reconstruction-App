@@ -86,10 +86,11 @@ class RenderThread(QThread):
 
     def move_right(self, step=0.1):
         dir = self.R[0 , :]
-        self.T = -self.R @ (-self.R.T@self.T + step*dir)
+        self.T = -self.R @ (-self.R.T@self.T - step*dir)
+        
     def move_left(self, step=0.1):
         dir = self.R[0 , :]
-        self.T = -self.R @ (-self.R.T@self.T - step*dir)
+        self.T = -self.R @ (-self.R.T@self.T + step*dir)
 
     def move_forward(self, step=0.1):
         dir = self.R[2 , :]
@@ -98,6 +99,36 @@ class RenderThread(QThread):
     def move_back(self, step = 0.1):
         dir = self.R[2 , :]
         self.T = -self.R @ (-self.R.T@self.T - step*dir)
+        
+    def rotate(self, dx, dy, sensitivity=0.01):
+        yaw   = dx * sensitivity # left-right
+        pitch = dy * sensitivity # up-down
+        Ry = self.rotation_y(yaw)
+        Rx = self.rotation_x(-pitch)
+        
+        
+        forward = self.R.T @ np.array([0,0,1])
+        C = -self.R.T @ self.T
+        dist = np.linalg.norm(C - self.pcd.center)
+        pivot = C + forward * dist * 0.01
+        pivot_c = self.R @ pivot + self.T
+        
+        self.R = Ry @ Rx @ self.R
+        self.T = pivot_c - self.R @ pivot
+        
+    def rotation_x(self, angle):
+        return np.array([
+        [1, 0, 0],
+        [0, np.cos(angle), -np.sin(angle)],
+        [0, np.sin(angle),  np.cos(angle)]
+    ])
+        
+    def rotation_y(self, angle):
+        return np.array([
+        [ np.cos(angle), 0, np.sin(angle)],
+        [0, 1, 0],
+        [-np.sin(angle), 0, np.cos(angle)]
+    ])
 
     def run(self):
         self.R, self.T = get_init_camera(self.point_min,self.point_max)
@@ -130,6 +161,8 @@ class RenderThread(QThread):
     def stop(self):
         self.running=False
         self.wait()
+        if self.pcd is not None:
+            self.pcd.close()
 
     def start_sfm(self):
         # sfm reconstruction with images

@@ -1,5 +1,5 @@
 from PyQt5.QtWidgets import QMainWindow, QHBoxLayout, QWidget, QAction, QFileDialog, QActionGroup, QTabWidget, QListWidget, QSplitter, QListWidgetItem, QVBoxLayout, QPushButton
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import Qt, QEvent, QTimer
 from PyQt5.QtGui import QIcon
 from desktop.ui.GLUI import GLWidget
 from desktop.render.Thread import RenderThread
@@ -8,7 +8,7 @@ import os
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("Site Viewer V0.0.0")
+        self.setWindowTitle("LLM Scene Viewer V0.0.0")
         self.resize(800, 600)
         self.renderthread = RenderThread()
 
@@ -30,6 +30,19 @@ class MainWindow(QMainWindow):
         layout.addWidget(self.tab_widget)
         self.setCentralWidget(central_widget)
         self.init_menu()
+        
+        self.setFocusPolicy(Qt.StrongFocus)
+        self.setFocus()
+        
+        self.events = set()
+        self.installEventFilter(self)
+        self.timer = QTimer()
+        self.timer.timeout.connect(self.update_camera)
+        self.timer.start(16)
+        
+        self.mouse_pressed = False
+        self.last_mouse_pos = None
+        self.mouse_button = None
         
         self.renderthread.frame_ready.connect(self.current_gl.set_image)
         self.renderthread.add_image_list.connect(self.add_Image_names)
@@ -135,3 +148,44 @@ class MainWindow(QMainWindow):
         
     def set_pcd(self):
         self.renderthread.set_pcd()
+        
+    def closeEvent(self, event):
+        self.renderthread.stop()
+        event.accept()
+        
+    def eventFilter(self, source, event):
+        if self.current_page == self.page1:
+            return False
+        if event.type() == QEvent.KeyPress:
+            self.events.add(event.key())
+            return True
+        elif event.type() == QEvent.KeyRelease:
+            self.events.discard(event.key())
+            return True
+        elif event.type() == QEvent.MouseButtonPress:
+            self.mouse_pressed = True
+            self.last_mouse_pos = event.pos()
+            self.mouse_button = event.button()
+            return True
+        elif event.type() == QEvent.MouseMove and self.mouse_pressed:
+            pos = event.pos()
+            dx = pos.x() - self.last_mouse_pos.x()
+            dy = pos.y() - self.last_mouse_pos.y()
+            self.last_mouse_pos = pos
+            self.renderthread.rotate(dx, dy)
+            return True
+        elif event.type() == QEvent.MouseButtonRelease:
+            self.mouse_pressed = False
+            return True
+        
+        return False
+    
+    def update_camera(self):
+        if Qt.Key_W in self.events:
+            self.renderthread.move_forward()
+        if Qt.Key_S in self.events:
+            self.renderthread.move_back()
+        if Qt.Key_A in self.events:
+            self.renderthread.move_left()
+        if Qt.Key_D in self.events:
+            self.renderthread.move_right()
