@@ -79,11 +79,29 @@ class PCD:
         )
         self.select_mask[idx_z[in_bbox]] = True
         
-        self.cloud["rgb"][:] = self.added_points_rgb
+        self.cloud["rgb"] = self.added_points_rgb
         self.cloud["rgb"][self.select_mask] = self.highlight_color
         
     def add_new_unselect(self, R, T, H, W, K, left, top, right, bottom):
-        pass
+        self.select_mask[:] = False
+        Pc = (R @ self.points_xyz.T).T + T.reshape(1, 3)
+        valid_z = Pc[:, 2] > 1e-6
+        Pc = Pc[valid_z]
+        idx_z = np.where(valid_z)[0]
+        
+        proj = (K @ Pc.T).T
+        u = W - proj[:, 0] / proj[:, 2]
+        v = H - proj[:, 1] / proj[:, 2]
+        in_bbox = (
+            (u >= left) & (u <= right) &
+            (v >= top) & (v <= bottom) &
+            (u >= 0) & (u < W) &
+            (v >= 0) & (v < H)
+        )
+        self.select_mask[idx_z[in_bbox]] = True
+        
+        self.cloud["rgb"][:] = self.added_points_rgb
+        self.cloud["rgb"][self.select_mask] = self.points_rgb[self.select_mask]
         
     def select(self, R, T, H, W, K, left, top, right, bottom):
         self.select_mask[:] = False
@@ -106,11 +124,32 @@ class PCD:
         self.select_mask[idx_z[in_bbox]] = True
         self.added_points_rgb[self.select_mask] = self.highlight_color
         
-        self.cloud["rgb"][:] = self.added_points_rgb
+        self.cloud["rgb"] = self.added_points_rgb
         self.selected_mask[self.select_mask] = True
         
     def unselect(self, R, T, H, W, K, left, top, right, bottom):
-        pass
+        self.select_mask[:] = False
+        Pc = (R @ self.points_xyz.T).T + T.reshape(1, 3)
+        valid_z = Pc[:, 2] > 1e-6
+        Pc = Pc[valid_z]
+        idx_z = np.where(valid_z)[0]
+        
+        proj = (K @ Pc.T).T
+        u = proj[:, 0] / proj[:, 2]
+        v = proj[:, 1] / proj[:, 2]
+        v = H - v
+        u = W - u
+        in_bbox = (
+            (u >= left) & (u <= right) &
+            (v >= top) & (v <= bottom) &
+            (u >= 0) & (u < W) &
+            (v >= 0) & (v < H)
+        )
+        self.select_mask[idx_z[in_bbox]] = True
+        self.added_points_rgb[self.select_mask] = self.points_rgb[self.select_mask]
+        
+        self.cloud["rgb"] = self.added_points_rgb
+        self.selected_mask[self.select_mask] = False
         
     def render(self):
         self.plotter.render()

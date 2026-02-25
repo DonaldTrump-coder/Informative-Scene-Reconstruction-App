@@ -1,4 +1,4 @@
-from PyQt5.QtCore import QThread, pyqtSignal
+from PyQt5.QtCore import QThread, pyqtSignal, QMutex, QWaitCondition
 import numpy as np
 from desktop.render.rendermode import Rendering_mode, Status_mode
 from desktop.render.cameras import get_init_camera
@@ -41,6 +41,11 @@ class RenderThread(QThread):
     top_v = None
     right_u = None
     bottom_v = None
+    
+    # thread tools
+    mutex = QMutex()
+    cond = QWaitCondition()
+    paused = False
 
     def __init__(self):
         super().__init__()
@@ -75,14 +80,17 @@ class RenderThread(QThread):
         self.rendering_mode = Rendering_mode.IMAGE
         
     def set_pcd(self):
-        self.pcd = PCD(
-            os.path.join(self.sparse_folder, "0", "cameras.bin"),
-            os.path.join(self.sparse_folder, "0", "images.bin"),
-            os.path.join(self.sparse_folder, "0", "points3D.bin")
-            )
-        self.R, self.T = self.pcd.get_extrinsics_init()
-        self.pcd.set_camera(self.R, self.T, self.H, self.W, self.K)
-        self.rendering_mode = Rendering_mode.PCD
+        if self.pcd is not None:
+            self.rendering_mode = Rendering_mode.PCD
+        else:
+            self.pcd = PCD(
+                os.path.join(self.sparse_folder, "0", "cameras.bin"),
+                os.path.join(self.sparse_folder, "0", "images.bin"),
+                os.path.join(self.sparse_folder, "0", "points3D.bin")
+                )
+            self.R, self.T = self.pcd.get_extrinsics_init()
+            self.pcd.set_camera(self.R, self.T, self.H, self.W, self.K)
+            self.rendering_mode = Rendering_mode.PCD
 
     def get_images(self):
         supported_extensions = ['.png', '.jpg', '.jpeg', '.bmp', '.gif', '.tiff', '.ppm']
@@ -114,12 +122,25 @@ class RenderThread(QThread):
         dir = self.R[2 , :]
         self.T = -self.R @ (-self.R.T@self.T - step*dir)
         
+    def rotate_in_z_clockwise(self, step = 0.01):
+        c, s = np.cos(step), np.sin(-step)
+        Rz = np.array([[c, -s, 0], [s, c, 0], [0, 0, 1]])
+        C = -self.R.T @ self.T
+        self.R = Rz @ self.R
+        self.T = -self.R @ C
+        
+    def rotate_in_z_anticlockwise(self, step = 0.01):
+        c, s = np.cos(step), np.sin(step)
+        Rz = np.array([[c, -s, 0], [s, c, 0], [0, 0, 1]])
+        C = -self.R.T @ self.T
+        self.R = Rz @ self.R
+        self.T = -self.R @ C
+        
     def rotate(self, dx, dy, sensitivity=0.01):
         yaw   = dx * sensitivity # left-right
         pitch = dy * sensitivity # up-down
         Ry = self.rotation_y(yaw)
         Rx = self.rotation_x(-pitch)
-        
         
         forward = self.R.T @ np.array([0,0,1])
         C = -self.R.T @ self.T
@@ -148,33 +169,62 @@ class RenderThread(QThread):
         self.R, self.T = get_init_camera(self.point_min,self.point_max)
         image = None
         while self.running:
+            self.mutex.lock()
+            while self.paused:
+                self.cond.wait(self.mutex)
+            
+            select_bbox = None if self.select_bbox is None else tuple(self.select_bbox)
+            R = self.R.copy() if self.R is not None else None
+            T = self.T.copy() if self.T is not None else None
+            K = self.K.copy() if self.K is not None else None
+            gl_x0 = self.gl_x0
+            gl_y0 = self.gl_y0
+            scale = self.scale
+            display_bbox = self.display_bbox
+            alpha = self.alpha
+            H = self.H
+            W = self.W
+            
+            self.mutex.unlock()
+            
             # rendering cores:
             if self.rendering_mode is Rendering_mode.NONE or self.rendering_mode is Rendering_mode.IMAGE:
                 pass
             if self.rendering_mode is Rendering_mode.PCD:
-                self.pcd.set_camera(self.R, self.T, self.H, self.W, self.K)
-                if self.select_bbox is not None:
-                    left, top, right, bottom = self.select_bbox
-                    self.left_u = max((left - self.gl_x0) / self.scale, 0)
-                    self.top_v = max((top - self.gl_y0) / self.scale, 0)
-                    self.right_u = min((right - self.gl_x0) / self.scale, self.W)
-                    self.bottom_v = min((bottom - self.gl_y0) / self.scale, self.H)
+                self.pcd.set_camera(R, T, H, W, K)
+                if select_bbox is not None:
+                    left, top, right, bottom = select_bbox
+                    left_u = max((left - gl_x0) / scale, 0)
+                    top_v = max((top - gl_y0) / scale, 0)
+                    right_u = min((right - gl_x0) / scale, W)
+                    bottom_v = min((bottom - gl_y0) / scale, H)
                     
                     image = self.pcd.render()
                     
                     if self.display_bbox:
                         overlay = image.copy()
-                        roi = overlay[int(self.top_v):int(self.bottom_v), int(self.left_u):int(self.right_u)].astype(np.float32)
-                        roi[..., 0] = roi[..., 0] * (1 - self.alpha) + 255 * self.alpha
-                        roi[..., 1] = roi[..., 1] * (1 - self.alpha)
-                        roi[..., 2] = roi[..., 2] * (1 - self.alpha)
-                        image[int(self.top_v):int(self.bottom_v), int(self.left_u):int(self.right_u), :] = roi.astype(np.uint8)
+                        roi = overlay[int(top_v):int(bottom_v), int(left_u):int(right_u)].astype(np.float32)
+                        roi[..., 0] = roi[..., 0] * (1 - alpha) + 255 * alpha
+                        roi[..., 1] = roi[..., 1] * (1 - alpha)
+                        roi[..., 2] = roi[..., 2] * (1 - alpha)
+                        image[int(top_v):int(bottom_v), int(left_u):int(right_u), :] = roi.astype(np.uint8)
                 else:
                     image = self.pcd.render()
                     
                 self.frame_ready.emit(image)
         if self.pcd is not None:
             self.pcd.close()
+            
+    def pause(self):
+        self.mutex.lock()
+        self.paused = True
+        self.mutex.unlock()
+        
+    def resume(self):
+        self.mutex.lock()
+        self.paused = False
+        self.cond.wakeAll()
+        self.mutex.unlock()
 
     def set_simple_image(self):
         data = np.fromfile(self.current_image, dtype=np.uint8)
@@ -204,11 +254,87 @@ class RenderThread(QThread):
             self.reconstructor.sfm()
             
     def add_new_select(self):
-        if self.left_u is None or self.top_v is None or self.right_u is None or self.bottom_v is None:
+        if self.select_bbox is None:
             return
-        self.pcd.add_new_select(self.R, self.T, self.H, self.W, self.K, self.left_u, self.top_v, self.right_u, self.bottom_v)
+        
+        self.pause()
+        self.mutex.lock()
+        select_bbox = self.select_bbox
+        R = self.R.copy() if self.R is not None else None
+        T = self.T.copy() if self.T is not None else None
+        K = self.K.copy() if self.K is not None else None
+        self.mutex.unlock()
+        
+        left, top, right, bottom = select_bbox
+        left_u = max((left - self.gl_x0) / self.scale, 0)
+        top_v = max((top - self.gl_y0) / self.scale, 0)
+        right_u = min((right - self.gl_x0) / self.scale, self.W)
+        bottom_v = min((bottom - self.gl_y0) / self.scale, self.H)
+        self.pcd.add_new_select(R, T, self.H, self.W, K, left_u, top_v, right_u, bottom_v)
+        
+        self.resume()
+        
+    def add_new_unselect(self):
+        if self.select_bbox is None:
+            return
+        
+        self.pause()
+        self.mutex.lock()
+        select_bbox = self.select_bbox
+        R = self.R.copy() if self.R is not None else None
+        T = self.T.copy() if self.T is not None else None
+        K = self.K.copy() if self.K is not None else None
+        self.mutex.unlock()
+        
+        left, top, right, bottom = select_bbox
+        left_u = max((left - self.gl_x0) / self.scale, 0)
+        top_v = max((top - self.gl_y0) / self.scale, 0)
+        right_u = min((right - self.gl_x0) / self.scale, self.W)
+        bottom_v = min((bottom - self.gl_y0) / self.scale, self.H)
+        self.pcd.add_new_unselect(R, T, self.H, self.W, K, left_u, top_v, right_u, bottom_v)
+        
+        self.resume()
         
     def select(self):
-        if self.left_u is None or self.top_v is None or self.right_u is None or self.bottom_v is None:
+        if self.select_bbox is None:
             return
-        self.pcd.select(self.R, self.T, self.H, self.W, self.K, self.left_u, self.top_v, self.right_u, self.bottom_v)
+        
+        self.pause()
+        self.mutex.lock()
+        select_bbox = self.select_bbox
+        R = self.R.copy() if self.R is not None else None
+        T = self.T.copy() if self.T is not None else None
+        K = self.K.copy() if self.K is not None else None
+        self.select_bbox = None
+        self.mutex.unlock()
+        
+        left, top, right, bottom = select_bbox
+        left_u = max((left - self.gl_x0) / self.scale, 0)
+        top_v = max((top - self.gl_y0) / self.scale, 0)
+        right_u = min((right - self.gl_x0) / self.scale, self.W)
+        bottom_v = min((bottom - self.gl_y0) / self.scale, self.H)
+        self.pcd.select(R, T, self.H, self.W, K, left_u, top_v, right_u, bottom_v)
+        
+        self.resume()
+
+    def unselect(self):
+        if self.select_bbox is None:
+            return
+        
+        self.pause()
+        self.mutex.lock()
+        select_bbox = self.select_bbox
+        R = self.R.copy() if self.R is not None else None
+        T = self.T.copy() if self.T is not None else None
+        K = self.K.copy() if self.K is not None else None
+        self.select_bbox = None
+        self.mutex.unlock()
+        
+        left, top, right, bottom = select_bbox
+        left_u = max((left - self.gl_x0) / self.scale, 0)
+        top_v = max((top - self.gl_y0) / self.scale, 0)
+        right_u = min((right - self.gl_x0) / self.scale, self.W)
+        bottom_v = min((bottom - self.gl_y0) / self.scale, self.H)
+        
+        self.pcd.unselect(R, T, self.H, self.W, K, left_u, top_v, right_u, bottom_v)
+        self.resume()

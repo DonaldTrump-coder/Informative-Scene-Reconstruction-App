@@ -1,4 +1,4 @@
-from PyQt5.QtWidgets import QMainWindow, QHBoxLayout, QWidget, QAction, QFileDialog, QActionGroup, QTabWidget, QListWidget, QSplitter, QListWidgetItem, QVBoxLayout, QPushButton, QToolButton, QSizePolicy, QRubberBand
+from PyQt5.QtWidgets import QMainWindow, QHBoxLayout, QWidget, QAction, QFileDialog, QActionGroup, QTabWidget, QListWidget, QSplitter, QListWidgetItem, QVBoxLayout, QPushButton, QToolButton, QSizePolicy, QButtonGroup
 from PyQt5.QtCore import Qt, QEvent, QTimer, QSize, QRect, QPoint
 from PyQt5.QtGui import QIcon
 from desktop.ui.GLUI import GLWidget
@@ -12,6 +12,9 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("LLM Scene Viewer V0.0.0")
         self.resize(800, 600)
         self.renderthread = RenderThread()
+        
+        self.tool_button_group = QButtonGroup() # Tool group of toolbar
+        self.tool_button_group.setExclusive(False)
 
         self.tab_widget = QTabWidget(self)
         self.page1 = self.create_page_layout(1)
@@ -177,10 +180,24 @@ class MainWindow(QMainWindow):
         self.renderthread.display_mode = status
         
     def selection_status(self):
-        self.set_status(Status_mode.SELECT)
+        btn = self.sender()
+        if btn.isChecked():
+            for other_btn in self.tool_buttons:
+                if other_btn != btn:
+                    other_btn.setChecked(False)
+            self.set_status(Status_mode.SELECT)
+        else:
+            self.set_status(Status_mode.FREE)
     
     def unselection_status(self):
-        self.set_status(Status_mode.UNSELECT)
+        btn = self.sender()
+        if btn.isChecked():
+            for other_btn in self.tool_buttons:
+                if other_btn != btn:
+                    other_btn.setChecked(False)
+            self.set_status(Status_mode.UNSELECT)
+        else:
+            self.set_status(Status_mode.FREE)
         
     def free_status(self):
         self.set_status(Status_mode.FREE)
@@ -206,6 +223,7 @@ class MainWindow(QMainWindow):
                     self.origin = getattr(self.page2, 'gl_widget', None).mapFrom(self, event.pos())
             elif self.pcd_display_mode == Status_mode.UNSELECT:
                 if event.button() == Qt.LeftButton:
+                    self.renderthread.select_bbox = None
                     self.mouse_pressed = True
                     self.origin = getattr(self.page2, 'gl_widget', None).mapFrom(self, event.pos())
             return True
@@ -227,6 +245,7 @@ class MainWindow(QMainWindow):
                 rect = QRect(self.origin, pos).normalized()
                 self.renderthread.select_bbox = (rect.left(), rect.top(), rect.right(), rect.bottom())
                 self.renderthread.display_bbox = True
+                self.renderthread.add_new_unselect()
             return True
         elif event.type() == QEvent.MouseButtonRelease:
             if self.pcd_display_mode == Status_mode.FREE:
@@ -246,6 +265,7 @@ class MainWindow(QMainWindow):
                 self.origin = QPoint()
                 self.mouse_pressed = False
                 self.renderthread.display_bbox = False
+                self.renderthread.unselect()
             return True
         
         return False
@@ -259,6 +279,10 @@ class MainWindow(QMainWindow):
             self.renderthread.move_left()
         if Qt.Key_D in self.events:
             self.renderthread.move_right()
+        if Qt.Key_Q in self.events:
+            self.renderthread.rotate_in_z_anticlockwise()
+        if Qt.Key_E in self.events:
+            self.renderthread.rotate_in_z_clockwise()
             
     def add_tool(
                  self,
@@ -271,10 +295,13 @@ class MainWindow(QMainWindow):
         btn.setIcon(QIcon(icon))
         btn.setToolTip(tip)
         btn.setAutoRaise(True)
+        btn.setCheckable(True)
         btn.clicked.connect(callback)
         tool_layout.addWidget(btn)
         btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.tool_buttons.append(btn)
+        self.tool_button_group.addButton(btn)
+        btn.setAutoExclusive(False)
         
     def resizeEvent(self, event):
         for btn in self.tool_buttons:
