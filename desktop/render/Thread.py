@@ -1,6 +1,6 @@
 from PyQt5.QtCore import QThread, pyqtSignal
 import numpy as np
-from desktop.render.rendermode import Rendering_mode
+from desktop.render.rendermode import Rendering_mode, Status_mode
 from desktop.render.cameras import get_init_camera
 import os
 import cv2
@@ -27,6 +27,16 @@ class RenderThread(QThread):
     current_image = None # current image path
     sparse_folder = None
     pcd = None
+    
+    display_mode = Status_mode.FREE
+    select_bbox = None # (left, top, right, bottom) in glwidget
+    glwidget_width = None
+    glwidget_height = None
+    scale = None
+    gl_x0 = None
+    gl_y0 = None
+    alpha = 0.45
+    display_bbox = True
 
     def __init__(self):
         super().__init__()
@@ -139,7 +149,24 @@ class RenderThread(QThread):
             if self.rendering_mode is Rendering_mode.PCD:
                 self.pcd.set_camera(self.R, self.T, self.H, self.W, self.K)
                 image = self.pcd.render()
+                if self.select_bbox is not None:
+                    left, top, right, bottom = self.select_bbox
+                    left_u = max((left - self.gl_x0) / self.scale, 0)
+                    top_v = max((top - self.gl_y0) / self.scale, 0)
+                    right_u = min((right - self.gl_x0) / self.scale, self.W)
+                    bottom_v = min((bottom - self.gl_y0) / self.scale, self.H)
+                    
+                    if self.display_bbox:
+                        overlay = image.copy()
+                        roi = overlay[int(top_v):int(bottom_v), int(left_u):int(right_u)].astype(np.float32)
+                        roi[..., 0] = roi[..., 0] * (1 - self.alpha) + 255 * self.alpha
+                        roi[..., 1] = roi[..., 1] * (1 - self.alpha)
+                        roi[..., 2] = roi[..., 2] * (1 - self.alpha)
+                        image[int(top_v):int(bottom_v), int(left_u):int(right_u), :] = roi.astype(np.uint8)
+                
                 self.frame_ready.emit(image)
+        if self.pcd is not None:
+            self.pcd.close()
 
     def set_simple_image(self):
         data = np.fromfile(self.current_image, dtype=np.uint8)
@@ -161,8 +188,6 @@ class RenderThread(QThread):
     def stop(self):
         self.running=False
         self.wait()
-        if self.pcd is not None:
-            self.pcd.close()
 
     def start_sfm(self):
         # sfm reconstruction with images

@@ -1,9 +1,10 @@
-from PyQt5.QtWidgets import QMainWindow, QHBoxLayout, QWidget, QAction, QFileDialog, QActionGroup, QTabWidget, QListWidget, QSplitter, QListWidgetItem, QVBoxLayout, QPushButton
-from PyQt5.QtCore import Qt, QEvent, QTimer
+from PyQt5.QtWidgets import QMainWindow, QHBoxLayout, QWidget, QAction, QFileDialog, QActionGroup, QTabWidget, QListWidget, QSplitter, QListWidgetItem, QVBoxLayout, QPushButton, QToolButton, QSizePolicy, QRubberBand
+from PyQt5.QtCore import Qt, QEvent, QTimer, QSize, QRect, QPoint
 from PyQt5.QtGui import QIcon
 from desktop.ui.GLUI import GLWidget
 from desktop.render.Thread import RenderThread
 import os
+from desktop.render.rendermode import Status_mode
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -43,10 +44,13 @@ class MainWindow(QMainWindow):
         self.mouse_pressed = False
         self.last_mouse_pos = None
         self.mouse_button = None
+        self.origin = QPoint()
         
         self.renderthread.frame_ready.connect(self.current_gl.set_image)
         self.renderthread.add_image_list.connect(self.add_Image_names)
         self.renderthread.start()
+        
+        self.pcd_display_mode = Status_mode.FREE
 
     def create_page_layout(self, page):
         page_widget = QWidget()
@@ -72,6 +76,18 @@ class MainWindow(QMainWindow):
             button1.setIcon(icon1)
             button1.clicked.connect(self.renderthread.start_sfm)
         splitter.addWidget(left_container)  # 左侧显示文件列表
+        
+        if page == 2:
+            self.tool_buttons = []
+            self.toolpanel = QWidget()
+            tool_layout = QVBoxLayout(self.toolpanel)
+            tool_layout.setContentsMargins(4,4,4,4)
+            tool_layout.setSpacing(6)
+            tool_layout.addStretch()
+            self.add_tool("resources/select.png", "选择", self.selection_status, tool_layout)
+            self.add_tool("resources/unselect.png", "取消选择", self.unselection_status, tool_layout)
+            
+            splitter.addWidget(self.toolpanel)
 
         # 图像显示区：GLWidget
         gl_widget = GLWidget(page_widget, mainwindow=self)
@@ -83,6 +99,9 @@ class MainWindow(QMainWindow):
         if page == 3:
             splitter.addWidget(textWidget)
             splitter.setSizes([int(self.width() * 0.2), int(self.width() * 0.6), int(self.width() * 0.2)])
+        elif page == 2:
+            splitter.widget(1).setFixedWidth(30)
+            splitter.setSizes([int(self.width() * 0.17), 30, int(self.width() * 0.7)])
         else:
             splitter.setSizes([int(self.width() * 0.2), int(self.width() * 0.8)])
         layout.addWidget(splitter)
@@ -153,6 +172,19 @@ class MainWindow(QMainWindow):
         self.renderthread.stop()
         event.accept()
         
+    def set_status(self, status: Status_mode):
+        self.pcd_display_mode = status
+        self.renderthread.display_mode = status
+        
+    def selection_status(self):
+        self.set_status(Status_mode.SELECT)
+    
+    def unselection_status(self):
+        self.set_status(Status_mode.UNSELECT)
+        
+    def free_status(self):
+        self.set_status(Status_mode.FREE)
+        
     def eventFilter(self, source, event):
         if self.current_page == self.page1:
             return False
@@ -163,19 +195,54 @@ class MainWindow(QMainWindow):
             self.events.discard(event.key())
             return True
         elif event.type() == QEvent.MouseButtonPress:
-            self.mouse_pressed = True
-            self.last_mouse_pos = event.pos()
-            self.mouse_button = event.button()
+            if self.pcd_display_mode == Status_mode.FREE:
+                self.mouse_pressed = True
+                self.last_mouse_pos = event.pos()
+                self.mouse_button = event.button()
+            elif self.pcd_display_mode == Status_mode.SELECT:
+                if event.button() == Qt.LeftButton:
+                    self.mouse_pressed = True
+                    self.origin = getattr(self.page2, 'gl_widget', None).mapFrom(self, event.pos())
+            elif self.pcd_display_mode == Status_mode.UNSELECT:
+                if event.button() == Qt.LeftButton:
+                    self.mouse_pressed = True
+                    self.origin = getattr(self.page2, 'gl_widget', None).mapFrom(self, event.pos())
             return True
         elif event.type() == QEvent.MouseMove and self.mouse_pressed:
-            pos = event.pos()
-            dx = pos.x() - self.last_mouse_pos.x()
-            dy = pos.y() - self.last_mouse_pos.y()
-            self.last_mouse_pos = pos
-            self.renderthread.rotate(dx, dy)
+            if self.pcd_display_mode == Status_mode.FREE:
+                pos = event.pos()
+                dx = pos.x() - self.last_mouse_pos.x()
+                dy = pos.y() - self.last_mouse_pos.y()
+                self.last_mouse_pos = pos
+                self.renderthread.rotate(dx, dy)
+            elif self.pcd_display_mode == Status_mode.SELECT:
+                pos = getattr(self.page2, 'gl_widget', None).mapFrom(self, event.pos())
+                rect = QRect(self.origin, pos).normalized()
+                self.renderthread.select_bbox = (rect.left(), rect.top(), rect.right(), rect.bottom())
+                self.renderthread.display_bbox = True
+            elif self.pcd_display_mode == Status_mode.UNSELECT:
+                pos = getattr(self.page2, 'gl_widget', None).mapFrom(self, event.pos())
+                rect = QRect(self.origin, pos).normalized()
+                self.renderthread.select_bbox = (rect.left(), rect.top(), rect.right(), rect.bottom())
+                self.renderthread.display_bbox = True
             return True
         elif event.type() == QEvent.MouseButtonRelease:
-            self.mouse_pressed = False
+            if self.pcd_display_mode == Status_mode.FREE:
+                self.mouse_pressed = False
+            elif self.pcd_display_mode == Status_mode.SELECT:
+                pos = getattr(self.page2, 'gl_widget', None).mapFrom(self, event.pos())
+                rect = QRect(self.origin, pos).normalized()
+                self.renderthread.select_bbox = (rect.left(), rect.top(), rect.right(), rect.bottom())
+                self.origin = QPoint()
+                self.mouse_pressed = False
+                self.renderthread.display_bbox = False
+            elif self.pcd_display_mode == Status_mode.UNSELECT:
+                pos = getattr(self.page2, 'gl_widget', None).mapFrom(self, event.pos())
+                rect = QRect(self.origin, pos).normalized()
+                self.renderthread.select_bbox = (rect.left(), rect.top(), rect.right(), rect.bottom())
+                self.origin = QPoint()
+                self.mouse_pressed = False
+                self.renderthread.display_bbox = False
             return True
         
         return False
@@ -189,3 +256,29 @@ class MainWindow(QMainWindow):
             self.renderthread.move_left()
         if Qt.Key_D in self.events:
             self.renderthread.move_right()
+            
+    def add_tool(
+                 self,
+                 icon: str,
+                 tip: str,
+                 callback: callable,
+                 tool_layout: QVBoxLayout
+                 ):
+        btn = QToolButton()
+        btn.setIcon(QIcon(icon))
+        btn.setToolTip(tip)
+        btn.setAutoRaise(True)
+        btn.clicked.connect(callback)
+        tool_layout.addWidget(btn)
+        btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.tool_buttons.append(btn)
+        
+    def resizeEvent(self, event):
+        for btn in self.tool_buttons:
+            w = self.toolpanel.width()
+            size = int(w * 0.9)
+            btn.setIconSize(QSize(size, size))
+            btn.setFixedHeight(int(w*1.1))
+        self.renderthread.glwidget_width = self.current_gl.width()
+        self.renderthread.glwidget_height = self.current_gl.height()
+        return super().resizeEvent(event)

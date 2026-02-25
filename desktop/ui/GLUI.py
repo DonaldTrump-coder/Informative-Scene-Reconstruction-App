@@ -11,6 +11,7 @@ class GLWidget(QOpenGLWidget):
         self.image = None
         self.texture_id = None
         self.main_window = mainwindow
+        self.scale = None
 
     def initialize(self):
         glClearColor(0.1, 0.1, 0.1, 1.0)  # 背景色
@@ -35,19 +36,23 @@ class GLWidget(QOpenGLWidget):
         #img = np.transpose(self.image, (1, 2, 0))  # 转为 (H,W,C)
 
         img = np.ascontiguousarray(self.image.astype(np.uint8))
-        if img.shape[2] == 4:  # 如果图像是 RGBA 格式
-            img = img[..., :3]  # 只保留 RGB 通道
-        elif img.shape[2] == 3:  # 如果图像是 RGB 格式
+        if img.shape[2] == 4:
+            img = img[..., :3]
+        elif img.shape[2] == 3:
             pass
         h, w, c = img.shape
         qimg = QImage(img.data, w, h, 3 * w, QImage.Format_RGB888)
 
         # 计算居中显示位置
-        scale = min(self.width() / w, self.height() / h)
-        disp_w = int(w * scale)
-        disp_h = int(h * scale)
+        self.scale = min(self.width() / w, self.height() / h)
+        disp_w = int(w * self.scale)
+        disp_h = int(h * self.scale)
         x0 = (self.width() - disp_w) // 2
         y0 = (self.height() - disp_h) // 2
+        
+        self.main_window.renderthread.scale = self.scale
+        self.main_window.renderthread.gl_x0 = x0
+        self.main_window.renderthread.gl_y0 = y0
 
         #painter.drawImage(x0, y0, qimg.scaled(disp_w, disp_h))
 
