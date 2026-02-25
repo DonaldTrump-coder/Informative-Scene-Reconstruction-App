@@ -201,6 +201,7 @@ class MainWindow(QMainWindow):
                 self.mouse_button = event.button()
             elif self.pcd_display_mode == Status_mode.SELECT:
                 if event.button() == Qt.LeftButton:
+                    self.renderthread.select_bbox = None
                     self.mouse_pressed = True
                     self.origin = getattr(self.page2, 'gl_widget', None).mapFrom(self, event.pos())
             elif self.pcd_display_mode == Status_mode.UNSELECT:
@@ -220,6 +221,7 @@ class MainWindow(QMainWindow):
                 rect = QRect(self.origin, pos).normalized()
                 self.renderthread.select_bbox = (rect.left(), rect.top(), rect.right(), rect.bottom())
                 self.renderthread.display_bbox = True
+                self.renderthread.add_new_select()
             elif self.pcd_display_mode == Status_mode.UNSELECT:
                 pos = getattr(self.page2, 'gl_widget', None).mapFrom(self, event.pos())
                 rect = QRect(self.origin, pos).normalized()
@@ -236,6 +238,7 @@ class MainWindow(QMainWindow):
                 self.origin = QPoint()
                 self.mouse_pressed = False
                 self.renderthread.display_bbox = False
+                self.renderthread.select()
             elif self.pcd_display_mode == Status_mode.UNSELECT:
                 pos = getattr(self.page2, 'gl_widget', None).mapFrom(self, event.pos())
                 rect = QRect(self.origin, pos).normalized()

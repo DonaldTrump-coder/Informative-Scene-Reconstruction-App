@@ -37,12 +37,16 @@ class RenderThread(QThread):
     gl_y0 = None
     alpha = 0.45
     display_bbox = True
+    left_u = None
+    top_v = None
+    right_u = None
+    bottom_v = None
 
     def __init__(self):
         super().__init__()
         self.rendering_mode = Rendering_mode.NONE # Initialized Rendering Mode
         self.running=True
-        self.fx = 1659
+        self.fx = 933
         self.fy = 933
         self.cx = 960
         self.cy = 540
@@ -142,28 +146,32 @@ class RenderThread(QThread):
 
     def run(self):
         self.R, self.T = get_init_camera(self.point_min,self.point_max)
+        image = None
         while self.running:
             # rendering cores:
             if self.rendering_mode is Rendering_mode.NONE or self.rendering_mode is Rendering_mode.IMAGE:
                 pass
             if self.rendering_mode is Rendering_mode.PCD:
                 self.pcd.set_camera(self.R, self.T, self.H, self.W, self.K)
-                image = self.pcd.render()
                 if self.select_bbox is not None:
                     left, top, right, bottom = self.select_bbox
-                    left_u = max((left - self.gl_x0) / self.scale, 0)
-                    top_v = max((top - self.gl_y0) / self.scale, 0)
-                    right_u = min((right - self.gl_x0) / self.scale, self.W)
-                    bottom_v = min((bottom - self.gl_y0) / self.scale, self.H)
+                    self.left_u = max((left - self.gl_x0) / self.scale, 0)
+                    self.top_v = max((top - self.gl_y0) / self.scale, 0)
+                    self.right_u = min((right - self.gl_x0) / self.scale, self.W)
+                    self.bottom_v = min((bottom - self.gl_y0) / self.scale, self.H)
+                    
+                    image = self.pcd.render()
                     
                     if self.display_bbox:
                         overlay = image.copy()
-                        roi = overlay[int(top_v):int(bottom_v), int(left_u):int(right_u)].astype(np.float32)
+                        roi = overlay[int(self.top_v):int(self.bottom_v), int(self.left_u):int(self.right_u)].astype(np.float32)
                         roi[..., 0] = roi[..., 0] * (1 - self.alpha) + 255 * self.alpha
                         roi[..., 1] = roi[..., 1] * (1 - self.alpha)
                         roi[..., 2] = roi[..., 2] * (1 - self.alpha)
-                        image[int(top_v):int(bottom_v), int(left_u):int(right_u), :] = roi.astype(np.uint8)
-                
+                        image[int(self.top_v):int(self.bottom_v), int(self.left_u):int(self.right_u), :] = roi.astype(np.uint8)
+                else:
+                    image = self.pcd.render()
+                    
                 self.frame_ready.emit(image)
         if self.pcd is not None:
             self.pcd.close()
@@ -194,3 +202,13 @@ class RenderThread(QThread):
         if self.project_set:
             self.reconstructor.add_images(self.images)
             self.reconstructor.sfm()
+            
+    def add_new_select(self):
+        if self.left_u is None or self.top_v is None or self.right_u is None or self.bottom_v is None:
+            return
+        self.pcd.add_new_select(self.R, self.T, self.H, self.W, self.K, self.left_u, self.top_v, self.right_u, self.bottom_v)
+        
+    def select(self):
+        if self.left_u is None or self.top_v is None or self.right_u is None or self.bottom_v is None:
+            return
+        self.pcd.select(self.R, self.T, self.H, self.W, self.K, self.left_u, self.top_v, self.right_u, self.bottom_v)
