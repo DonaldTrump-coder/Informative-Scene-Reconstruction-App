@@ -7,7 +7,7 @@ import cv2
 from PyQt5.QtWidgets import QFileDialog
 from desktop.Colmap.reconstructor import constructor
 from desktop.project import rec_project
-from desktop.Colmap.pcd import PCD
+from desktop.Colmap.pcd import PCD, PCD_label
 
 class RenderThread(QThread):
     frame_ready = pyqtSignal(np.ndarray)
@@ -27,6 +27,7 @@ class RenderThread(QThread):
     current_image = None # current image path
     sparse_folder = None
     pcd = None
+    pcd_labels = [] # point cloud labels list
     
     display_mode = Status_mode.FREE
     select_bbox = None # (left, top, right, bottom) in glwidget
@@ -338,3 +339,15 @@ class RenderThread(QThread):
         
         self.pcd.unselect(R, T, self.H, self.W, K, left_u, top_v, right_u, bottom_v)
         self.resume()
+        
+    def unselect_all(self):
+        self.pause()
+        self.mutex.lock()
+        self.mutex.unlock()
+        
+        self.pcd.unselect_all()
+        self.resume()
+        
+    def add_label(self, name, description):
+        xmin, ymin, zmin, xmax, ymax, zmax = self.pcd.get_label_bbox()
+        self.pcd_labels.append(PCD_label(name, description, (xmin, ymin, zmin, xmax, ymax, zmax)))

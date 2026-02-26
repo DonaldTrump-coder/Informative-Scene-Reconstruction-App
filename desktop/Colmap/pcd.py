@@ -2,6 +2,13 @@ from desktop.Colmap.read_write_model import read_cameras_binary, read_images_bin
 import numpy as np
 import pyvista as pv
 
+class PCD_label:
+    def __init__(self, name, description, bbox):
+        # bounding box: (xmin, ymin, zmin, xmax, ymax, zmax)
+        self.name = name
+        self.description = description
+        self.bbox = bbox
+
 class PCD:
     def __init__(self, camera_file, image_file, point_file):
         self.camera_file = camera_file
@@ -151,12 +158,25 @@ class PCD:
         self.cloud["rgb"] = self.added_points_rgb
         self.selected_mask[self.select_mask] = False
         
+    def unselect_all(self):
+        self.added_points_rgb[:] = self.points_rgb
+        self.cloud["rgb"] = self.added_points_rgb
+        self.selected_mask[:] = False
+        
     def render(self):
         self.plotter.render()
         return self.plotter.screenshot()
     
     def close(self):
         self.plotter.close()
+        
+    def get_label_bbox(self):
+        label_points = self.points_xyz[self.selected_mask]
+        if label_points.shape[0] == 0:
+            return None
+        xmin, ymin, zmin = label_points.min(axis=0)
+        xmax, ymax, zmax = label_points.max(axis=0)
+        return (xmin, ymin, zmin, xmax, ymax, zmax)
         
 if __name__ == '__main__':
     pcd = PCD("D:\\Projects\\Informative-Scene-Reconstruction-App\\data\\playroom\\output\\sparse\\0\\cameras.bin", "D:\\Projects\\Informative-Scene-Reconstruction-App\\data\\playroom\\output\\sparse\\0\\images.bin", "D:\\Projects\\Informative-Scene-Reconstruction-App\\data\\playroom\\output\\sparse\\0\\points3D.bin")

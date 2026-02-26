@@ -1,7 +1,8 @@
-from PyQt5.QtWidgets import QMainWindow, QHBoxLayout, QWidget, QAction, QFileDialog, QActionGroup, QTabWidget, QListWidget, QSplitter, QListWidgetItem, QVBoxLayout, QPushButton, QToolButton, QSizePolicy, QButtonGroup
+from PyQt5.QtWidgets import QMainWindow, QHBoxLayout, QWidget, QAction, QFileDialog, QActionGroup, QTabWidget, QListWidget, QSplitter, QListWidgetItem, QVBoxLayout, QPushButton, QToolButton, QSizePolicy, QButtonGroup, QDialog
 from PyQt5.QtCore import Qt, QEvent, QTimer, QSize, QRect, QPoint
 from PyQt5.QtGui import QIcon
 from desktop.ui.GLUI import GLWidget
+from desktop.ui.labelUI import LabelUI
 from desktop.render.Thread import RenderThread
 import os
 from desktop.render.rendermode import Status_mode
@@ -87,8 +88,9 @@ class MainWindow(QMainWindow):
             tool_layout.setContentsMargins(4,4,4,4)
             tool_layout.setSpacing(6)
             tool_layout.addStretch()
-            self.add_tool("resources/select.png", "选择", self.selection_status, tool_layout)
-            self.add_tool("resources/unselect.png", "取消选择", self.unselection_status, tool_layout)
+            self.add_tool("resources/select.png", "选择", self.selection_status, True, tool_layout)
+            self.add_tool("resources/unselect.png", "取消选择", self.unselection_status, True, tool_layout)
+            self.add_tool("resources/label.png", "标注", self.get_label, False, tool_layout)
             
             splitter.addWidget(self.toolpanel)
 
@@ -202,6 +204,14 @@ class MainWindow(QMainWindow):
     def free_status(self):
         self.set_status(Status_mode.FREE)
         
+    def get_label(self):
+        inputdig = LabelUI(self)
+        if inputdig.exec_() == QDialog.Accepted:
+            name, description = inputdig.get_values()
+            if name and description:
+                self.renderthread.add_label(name, description)
+                self.renderthread.unselect_all()
+        
     def eventFilter(self, source, event):
         if self.current_page == self.page1:
             return False
@@ -289,13 +299,14 @@ class MainWindow(QMainWindow):
                  icon: str,
                  tip: str,
                  callback: callable,
-                 tool_layout: QVBoxLayout
+                 checkable: bool = True,
+                 tool_layout: QVBoxLayout = None
                  ):
         btn = QToolButton()
         btn.setIcon(QIcon(icon))
         btn.setToolTip(tip)
         btn.setAutoRaise(True)
-        btn.setCheckable(True)
+        btn.setCheckable(checkable)
         btn.clicked.connect(callback)
         tool_layout.addWidget(btn)
         btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
