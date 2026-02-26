@@ -79,6 +79,12 @@ class MainWindow(QMainWindow):
             icon1 = QIcon("resources/play.png")
             button1.setIcon(icon1)
             button1.clicked.connect(self.renderthread.start_sfm)
+        elif page == 2:
+            button1 = QPushButton("生成3DGS场景")
+            left_layout.addWidget(button1)
+            icon1 = QIcon("resources/play-button.png")
+            button1.setIcon(icon1)
+            #button1.clicked.connect(self.renderthread.start_sfm)
         splitter.addWidget(left_container)  # 左侧显示文件列表
         
         if page == 2:
@@ -158,11 +164,16 @@ class MainWindow(QMainWindow):
             item = QListWidgetItem(os.path.basename(image))
             item.setData(Qt.UserRole, image)
             self.current_list.addItem(item)
-            self.current_list.itemClicked.connect(self.on_image_item_clicked)
+        self.current_list.itemClicked.connect(self.on_item_clicked)
 
-    def on_image_item_clicked(self, item):
-        image = item.data(Qt.UserRole)   # 取完整路径
-        self.renderthread.set_current_image(image)
+    def on_item_clicked(self, item):
+        if self.current_page == self.page1:
+            image = item.data(Qt.UserRole)   # 取完整路径
+            self.renderthread.set_current_image(image)
+        elif self.current_page == self.page2:
+            pass
+        elif self.current_page == self.page3:
+            pass
         
     def set_image(self):
         self.renderthread.set_image()
@@ -211,6 +222,16 @@ class MainWindow(QMainWindow):
             if name and description:
                 self.renderthread.add_label(name, description)
                 self.renderthread.unselect_all()
+                self.update_current_list()
+                
+    def update_current_list(self):
+        if self.current_page == self.page2:
+            self.current_list.clear()
+            for index, label in enumerate(self.renderthread.pcd_labels):
+                item = QListWidgetItem(f"{index+1}," + label.name)
+                item.setData(Qt.UserRole, index)
+                self.current_list.addItem(item)
+            self.current_list.itemClicked.connect(self.on_item_clicked)
         
     def eventFilter(self, source, event):
         if self.current_page == self.page1:
