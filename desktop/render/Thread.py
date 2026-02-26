@@ -8,6 +8,7 @@ from PyQt5.QtWidgets import QFileDialog
 from desktop.Colmap.reconstructor import constructor
 from desktop.project import rec_project
 from desktop.Colmap.pcd import PCD, PCD_label
+import requests
 
 class RenderThread(QThread):
     frame_ready = pyqtSignal(np.ndarray)
@@ -42,6 +43,7 @@ class RenderThread(QThread):
     top_v = None
     right_u = None
     bottom_v = None
+    local2server_url = ""
     
     # thread tools
     mutex = QMutex()
@@ -351,3 +353,9 @@ class RenderThread(QThread):
     def add_label(self, name, description):
         xmin, ymin, zmin, xmax, ymax, zmax = self.pcd.get_label_bbox()
         self.pcd_labels.append(PCD_label(name, description, (xmin, ymin, zmin, xmax, ymax, zmax)))
+        
+    def start_training(self):
+        # call server api to start training
+        url = self.local2server_url + "/run"
+        cmd = "python test.py"
+        r = requests.post(url, json={"cmd": cmd})

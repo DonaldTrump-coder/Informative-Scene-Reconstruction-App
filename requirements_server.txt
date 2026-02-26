@@ -1,0 +1,10 @@
+fastapi
+uvicorn
+pydantic
+plyfile
+tqdm
+submodules/diff-gaussian-rasterization
+joblib
+opencv-python
+submodules/simple-knn
+submodules/fused-ssim

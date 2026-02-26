@@ -8,11 +8,12 @@ import os
 from desktop.render.rendermode import Status_mode
 
 class MainWindow(QMainWindow):
-    def __init__(self):
+    def __init__(self, url):
         super().__init__()
         self.setWindowTitle("LLM Scene Viewer V0.0.0")
         self.resize(800, 600)
         self.renderthread = RenderThread()
+        self.renderthread.local2server_url = url
         
         self.tool_button_group = QButtonGroup() # Tool group of toolbar
         self.tool_button_group.setExclusive(False)
@@ -84,7 +85,7 @@ class MainWindow(QMainWindow):
             left_layout.addWidget(button1)
             icon1 = QIcon("resources/play-button.png")
             button1.setIcon(icon1)
-            #button1.clicked.connect(self.renderthread.start_sfm)
+            button1.clicked.connect(self.renderthread.start_training)
         splitter.addWidget(left_container)  # 左侧显示文件列表
         
         if page == 2:
