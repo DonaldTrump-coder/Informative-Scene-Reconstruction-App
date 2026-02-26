@@ -3,8 +3,8 @@ uvicorn
 pydantic
 plyfile
 tqdm
-submodules/diff-gaussian-rasterization
+server/gaussian-splatting/submodules/diff-gaussian-rasterization
 joblib
 opencv-python
-submodules/simple-knn
-submodules/fused-ssim
+server/gaussian-splatting/submodules/simple-knn
+server/gaussian-splatting/submodules/fused-ssim
