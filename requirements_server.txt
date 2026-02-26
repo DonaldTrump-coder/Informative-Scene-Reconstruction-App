@@ -8,3 +8,5 @@ joblib
 opencv-python
 server/gaussian-splatting/submodules/simple-knn
 server/gaussian-splatting/submodules/fused-ssim
+pillow
+requests

@@ -7,3 +7,4 @@ PyQt5==5.15.11
 tqdm==4.67.1
 pycolmap
 pyvista
+requests

@@ -354,8 +354,11 @@ class RenderThread(QThread):
         xmin, ymin, zmin, xmax, ymax, zmax = self.pcd.get_label_bbox()
         self.pcd_labels.append(PCD_label(name, description, (xmin, ymin, zmin, xmax, ymax, zmax)))
         
+    def upload_floder(self):
+        pass
+        
     def start_training(self):
         # call server api to start training
         url = self.local2server_url + "/run"
-        cmd = "python test.py"
+        cmd = "python server/test.py"
         r = requests.post(url, json={"cmd": cmd})

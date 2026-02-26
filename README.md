@@ -11,4 +11,5 @@ CUDA=11.8
 pip install torch==2.0.0 torchvision==0.15.1 torchaudio==2.0.1 --index-url https://download.pytorch.org/whl/cu118
 pip install -r requirements_server.txt
 
-uvicorn server:app --host 0.0.0.0 --port 8000
+uvicorn server.main:app --host 0.0.0.0 --port 8000
+将端口8000映射到用户
