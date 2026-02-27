@@ -13,27 +13,40 @@ class constructor:
             raise ValueError("image_list 为空")
         
         dir = temp_images(os.path.dirname(self.db), image_list)
-        # 提取文件夹和文件名
+        
         pycolmap.import_images(
             database_path=self.db,
             image_path = dir
         )
         self.image_path = dir
+    
+    def add_image_folder(self, folder):
+        self.image_path = folder
+        pycolmap.import_images(
+            database_path=self.db,
+            image_path = self.image_path
+        )
 
     def sfm(self):
-        os.makedirs(os.path.join(os.path.dirname(self.db),"output","sparse"))
+        os.makedirs(os.path.join(os.path.dirname(self.db), "sparse"))
         sift_options = pycolmap.FeatureExtractionOptions(
             use_gpu=False,         # 是否使用 GPU
             num_threads=4          # 提取特征线程数
         )
+        reader_options = pycolmap.ImageReaderOptions(
+            camera_model = "PINHOLE"
+        )
         pycolmap.extract_features(database_path=self.db,
                                   image_path=self.image_path,
-                                  extraction_options=sift_options)
+                                  camera_mode=pycolmap.CameraMode.SINGLE,
+                                  reader_options=reader_options,
+                                  extraction_options=sift_options
+                                  )
         pycolmap.match_sequential(self.db)
         reconstruction = pycolmap.incremental_mapping(
         database_path=self.db,
         image_path=self.image_path,
-        output_path=os.path.join(os.path.dirname(self.db),"output","sparse")
+        output_path=os.path.join(os.path.dirname(self.db), "sparse")
         )
         
 if __name__ == "__main__":

@@ -381,3 +381,11 @@ class RenderThread(QThread):
         }
         r = requests.post(url, params=params)
         print(r.json["status"])
+        
+    def scene_reconstruct(self):
+        url = self.local2server_url + "/reconstruct"
+        params = {
+            "object_id": self.server_scene_id
+        }
+        r = requests.post(url, params=params)
+        print(r.json["status"])

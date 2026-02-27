@@ -79,7 +79,7 @@ class MainWindow(QMainWindow):
             button_layout.addWidget(button1)
             icon1 = QIcon("resources/play.png")
             button1.setIcon(icon1)
-            button1.clicked.connect(self.renderthread.start_sfm)
+            button1.clicked.connect(self.start_sfm)
         elif page == 2:
             button1 = QPushButton("生成3DGS场景")
             left_layout.addWidget(button1)
@@ -347,5 +347,9 @@ class MainWindow(QMainWindow):
         return super().resizeEvent(event)
     
     def start_server_training(self):
-        self.renderthread.upload_floder()
+        #self.renderthread.upload_floder()
         self.renderthread.scene_train()
+        
+    def start_sfm(self):
+        self.renderthread.upload_floder()
+        self.renderthread.scene_reconstruct()

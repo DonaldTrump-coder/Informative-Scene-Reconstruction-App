@@ -15,6 +15,7 @@ class PCD:
         self.image_file = image_file
         self.point_file = point_file
         self.points3D = read_points3D_binary(self.point_file)
+        print(read_cameras_binary(self.camera_file))
         self.points_xyz = np.array([point.xyz for point in self.points3D.values()])
         self.points_rgb = np.array([point.rgb for point in self.points3D.values()])
         self.added_points_rgb = self.points_rgb.copy()

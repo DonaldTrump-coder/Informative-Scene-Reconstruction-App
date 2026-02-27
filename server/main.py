@@ -12,6 +12,7 @@ import uuid
 import os
 from server.GS import train as trainGS, GSrender as renderGS
 import torch
+from desktop.Colmap.reconstructor import constructor
 
 class CameraParam(BaseModel):
     object_id: str
@@ -37,6 +38,12 @@ class SceneObject:
         self.train_status = "Not trained"
         self.training_lock = threading.Lock()
         self.render_lock = threading.Lock()
+        self.reconstruction_lock = threading.Lock()
+        
+    def reconstruction(self):
+        sfm = constructor(os.path.join(self.folder, "project.db"))
+        sfm.add_image_folder(os.path.join(self.folder, "images"))
+        sfm.sfm()
         
     def train(self):
         input_folder = self.folder
@@ -79,6 +86,15 @@ def train_scene(object_id: str):
     with obj.training_lock:
         obj.train()
     return {"status": "trained"}
+
+@app.post("/reconstruct")
+def reconstruct_scene(object_id: str):
+    if object_id not in scene_objects:
+        return {"error": "ID not found"}
+    obj = scene_objects[object_id]
+    with obj.reconstruction_lock:
+        obj.reconstruction()
+    return {"status": "reconstructed"}
 
 @app.post("/render")
 def render_scene(cam: CameraParam = Body(...)):
