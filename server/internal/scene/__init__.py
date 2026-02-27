@@ -12,7 +12,7 @@
 import os
 import random
 import json
-from utils.system_utils import searchForMaxIteration
+from server.internal.utils.system_utils import searchForMaxIteration
 from server.internal.scene.dataset_readers import sceneLoadTypeCallbacks
 from server.internal.scene.gaussian_model import GaussianModel
 from server.internal.arguments import ModelParams
