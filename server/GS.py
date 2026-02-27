@@ -50,7 +50,7 @@ def getProjectionMatrix(znear, zfar, fovX, fovY):
     P[2, 3] = -(zfar * znear) / (zfar - znear)
     return P
     
-class ModelParams(ParamGroup): 
+class ModelParams(): 
     def __init__(self, input_path, output_path, sentinel=False):
         self.sh_degree = 3
         self.source_path = input_path
@@ -63,8 +63,8 @@ class ModelParams(ParamGroup):
         self.data_device = "cuda"
         self.eval = False
         
-class OptimizationParams(ParamGroup):
-    def __init__(self, parser):
+class OptimizationParams():
+    def __init__(self):
         self.iterations = 30_000
         self.position_lr_init = 0.00016
         self.position_lr_final = 0.0000016
@@ -90,8 +90,8 @@ class OptimizationParams(ParamGroup):
         self.random_background = False
         self.optimizer_type = "default"
         
-class PipelineParams(ParamGroup):
-    def __init__(self, parser):
+class PipelineParams():
+    def __init__(self):
         self.convert_SHs_python = False
         self.compute_cov3D_python = False
         self.debug = False

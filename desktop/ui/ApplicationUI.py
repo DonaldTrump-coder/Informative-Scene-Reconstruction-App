@@ -348,4 +348,4 @@ class MainWindow(QMainWindow):
     
     def start_server_training(self):
         self.renderthread.upload_floder()
-        
+        self.renderthread.scene_train()
