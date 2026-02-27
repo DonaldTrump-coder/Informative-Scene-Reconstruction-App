@@ -22,7 +22,7 @@ class CameraParam(BaseModel):
     W: int
 
 app = FastAPI()
-BASE_STORAGE = "/server_storage" # storage on server
+BASE_STORAGE = os.path.join(os.path.dirname(__file__), "server_storage")
 os.makedirs(BASE_STORAGE, exist_ok=True)
 OUTPUT = os.path.join(BASE_STORAGE, "output")
 os.makedirs(OUTPUT, exist_ok=True)
