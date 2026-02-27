@@ -11,3 +11,4 @@ server/internal/submodules/simple-knn
 server/internal/submodules/fused-ssim
 pillow
 requests
+python-multipart

@@ -73,13 +73,16 @@ async def upload_files(files: list[UploadFile] = File(...)
     return {"status": "uploaded", "id": object_id}
 
 @app.post("/train")
-async def train_scene(object_id: str):
+async def train_scene(object_id: str, background_tasks: BackgroundTasks):
     if object_id not in scene_objects:
         return {"error": "ID not found"}
     obj = scene_objects[object_id]
+    background_tasks.add_task(run_training, obj)
+    return {"status": "training started"}
+
+def run_training(obj: SceneObject):
     with obj.training_lock:
         obj.train()
-    return {"status": "trained"}
 
 @app.post("/render")
 async def render_scene(cam: CameraParam = Body(...)):
