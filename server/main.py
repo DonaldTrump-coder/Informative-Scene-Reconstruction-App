@@ -61,6 +61,7 @@ async def upload_files(files: list[UploadFile] = File(...)
     
     for f in files:
         file_path = os.path.join(obj_folder, f.filename)
+        os.makedirs(os.path.dirname(file_path), exist_ok=True)
         with open(file_path, "wb") as out_file:
             while content := await f.read(1024*1024):  # 1MB chunks
                 out_file.write(content)
