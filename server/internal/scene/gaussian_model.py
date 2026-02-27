@@ -11,16 +11,16 @@
 
 import torch
 import numpy as np
-from utils.general_utils import inverse_sigmoid, get_expon_lr_func, build_rotation
+from server.internal.utils.general_utils import inverse_sigmoid, get_expon_lr_func, build_rotation
 from torch import nn
 import os
 import json
-from utils.system_utils import mkdir_p
+from server.internal.utils.system_utils import mkdir_p
 from plyfile import PlyData, PlyElement
-from utils.sh_utils import RGB2SH
+from server.internal.utils.sh_utils import RGB2SH
 from simple_knn._C import distCUDA2
-from utils.graphics_utils import BasicPointCloud
-from utils.general_utils import strip_symmetric, build_scaling_rotation
+from server.internal.utils.graphics_utils import BasicPointCloud
+from server.internal.utils.general_utils import strip_symmetric, build_scaling_rotation
 
 try:
     from diff_gaussian_rasterization import SparseGaussianAdam
