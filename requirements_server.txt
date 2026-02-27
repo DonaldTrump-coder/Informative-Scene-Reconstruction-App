@@ -3,9 +3,10 @@ uvicorn
 pydantic
 plyfile
 tqdm
+numpy==1.23.5
+opencv-python==4.7.0.72
 server/internal/submodules/diff-gaussian-rasterization
 joblib
-opencv-python
 server/internal/submodules/simple-knn
 server/internal/submodules/fused-ssim
 pillow

@@ -41,6 +41,7 @@ class SceneObject:
     def train(self):
         input_folder = self.folder
         output_folder = os.path.join(OUTPUT, self.object_id)
+        os.makedirs(output_folder, exist_ok=True)
         self.gaussians, self.pp, self.bg_color = trainGS(input_folder, output_folder)
         self.train_status = "Trained"
     
@@ -72,7 +73,7 @@ async def upload_files(files: list[UploadFile] = File(...)
     return {"status": "uploaded", "id": object_id}
 
 @app.post("/train")
-def train_scene(object_id: str):
+async def train_scene(object_id: str):
     if object_id not in scene_objects:
         return {"error": "ID not found"}
     obj = scene_objects[object_id]
@@ -81,7 +82,7 @@ def train_scene(object_id: str):
     return {"status": "trained"}
 
 @app.post("/render")
-def render_scene(cam: CameraParam = Body(...)):
+async def render_scene(cam: CameraParam = Body(...)):
     obj_id = cam.object_id
     if obj_id not in scene_objects:
         return {"error": "ID not found"}
@@ -109,5 +110,5 @@ def render_scene(cam: CameraParam = Body(...)):
     )
 
 @app.post("/destroy")
-def destroy_scene(object_id: str):
+async def destroy_scene(object_id: str):
     pass

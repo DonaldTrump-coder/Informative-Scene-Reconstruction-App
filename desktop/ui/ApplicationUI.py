@@ -351,6 +351,4 @@ class MainWindow(QMainWindow):
         self.renderthread.scene_train()
         
     def start_sfm(self):
-        #self.renderthread.upload_floder()
-        #self.renderthread.scene_reconstruct()
         self.renderthread.start_sfm()

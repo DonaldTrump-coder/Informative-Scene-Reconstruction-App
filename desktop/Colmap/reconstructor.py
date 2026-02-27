@@ -37,7 +37,7 @@ class constructor:
         )
 
     def sfm(self):
-        os.makedirs(os.path.join(os.path.dirname(self.db), "sparse"))
+        os.makedirs(os.path.join(os.path.dirname(self.db), "output", "sparse"))
         sift_options = pycolmap.FeatureExtractionOptions(
             use_gpu=False,         # 是否使用 GPU
             num_threads=4          # 提取特征线程数
@@ -51,11 +51,11 @@ class constructor:
         reconstruction = pycolmap.incremental_mapping(
         database_path=self.db,
         image_path=self.image_path,
-        output_path=os.path.join(os.path.dirname(self.db), "sparse")
+        output_path=os.path.join(os.path.dirname(self.db), "output", "sparse")
         )
         
     def sfm_test(self):
-        os.makedirs(os.path.join(os.path.dirname(self.db), "ourput", "sparse"), exist_ok=True)
+        os.makedirs(os.path.join(os.path.dirname(self.db), "output", "sparse"), exist_ok=True)
         sift_options = pycolmap.SiftExtractionOptions(
             num_threads=4          # 提取特征线程数
         )
@@ -68,7 +68,7 @@ class constructor:
         reconstruction = pycolmap.incremental_mapping(
         database_path=self.db,
         image_path=self.image_path,
-        output_path=os.path.join(os.path.dirname(self.db), "ourput", "sparse")
+        output_path=os.path.join(os.path.dirname(self.db), "output", "sparse")
         )
         
 if __name__ == "__main__":
