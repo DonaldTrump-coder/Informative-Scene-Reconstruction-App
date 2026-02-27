@@ -1,7 +1,6 @@
 import os
 import pycolmap
-#from desktop.Colmap.folder import temp_images
-from folder import temp_images
+from desktop.Colmap.folder import temp_images
 
 class constructor:
     def __init__(self, database):
@@ -15,9 +14,14 @@ class constructor:
         
         dir = temp_images(os.path.dirname(self.db), image_list)
         
+        self.reader_options = pycolmap.ImageReaderOptions(
+            camera_model = "PINHOLE"
+        )
+        
         pycolmap.import_images(
             database_path=self.db,
-            image_path = dir
+            image_path = dir,
+            options = self.reader_options
         )
         self.image_path = dir
     
@@ -51,7 +55,7 @@ class constructor:
         )
         
     def sfm_test(self):
-        os.makedirs(os.path.join(os.path.dirname(self.db), "sparse"), exist_ok=True)
+        os.makedirs(os.path.join(os.path.dirname(self.db), "ourput", "sparse"), exist_ok=True)
         sift_options = pycolmap.SiftExtractionOptions(
             num_threads=4          # 提取特征线程数
         )
@@ -64,7 +68,7 @@ class constructor:
         reconstruction = pycolmap.incremental_mapping(
         database_path=self.db,
         image_path=self.image_path,
-        output_path=os.path.join(os.path.dirname(self.db), "sparse")
+        output_path=os.path.join(os.path.dirname(self.db), "ourput", "sparse")
         )
         
 if __name__ == "__main__":
