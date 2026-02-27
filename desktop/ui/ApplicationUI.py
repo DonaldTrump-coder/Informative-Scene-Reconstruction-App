@@ -85,7 +85,7 @@ class MainWindow(QMainWindow):
             left_layout.addWidget(button1)
             icon1 = QIcon("resources/play-button.png")
             button1.setIcon(icon1)
-            button1.clicked.connect(self.renderthread.start_training)
+            button1.clicked.connect(self.start_server_training)
         splitter.addWidget(left_container)  # 左侧显示文件列表
         
         if page == 2:
@@ -345,3 +345,7 @@ class MainWindow(QMainWindow):
         self.renderthread.glwidget_width = self.current_gl.width()
         self.renderthread.glwidget_height = self.current_gl.height()
         return super().resizeEvent(event)
+    
+    def start_server_training(self):
+        self.renderthread.upload_floder()
+        

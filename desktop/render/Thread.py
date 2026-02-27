@@ -9,6 +9,7 @@ from desktop.Colmap.reconstructor import constructor
 from desktop.project import rec_project
 from desktop.Colmap.pcd import PCD, PCD_label
 import requests
+from desktop.Colmap.folder import temp_sparse
 
 class RenderThread(QThread):
     frame_ready = pyqtSignal(np.ndarray)
@@ -43,7 +44,9 @@ class RenderThread(QThread):
     top_v = None
     right_u = None
     bottom_v = None
+    
     local2server_url = ""
+    server_scene_id = None
     
     # thread tools
     mutex = QMutex()
@@ -255,6 +258,7 @@ class RenderThread(QThread):
         if self.project_set:
             self.reconstructor.add_images(self.images)
             self.reconstructor.sfm()
+            temp_sparse(os.path.join(self.project_folder, "temp"), self.sparse_folder)
             
     def add_new_select(self):
         if self.select_bbox is None:
@@ -355,10 +359,25 @@ class RenderThread(QThread):
         self.pcd_labels.append(PCD_label(name, description, (xmin, ymin, zmin, xmax, ymax, zmax)))
         
     def upload_floder(self):
-        pass
+        url = self.local2server_url + "/upload"
+        temp_folder = os.path.join(self.project_folder, "temp")
         
-    def start_training(self):
-        # call server api to start training
-        url = self.local2server_url + "/run"
-        cmd = "python server/test.py"
-        r = requests.post(url, json={"cmd": cmd})
+        files_to_upload = []
+        for root, dirs, files in os.walk(temp_folder):
+            for file in files:
+                full_path = os.path.join(root, file)
+                rel_path = os.path.relpath(full_path, temp_folder) # use relative path for upload
+                files_to_upload.append(
+                ("files", (rel_path.replace("\\","/"), open(full_path, "rb")))
+                )
+        
+        r = requests.post(url, files=files_to_upload)
+        self.server_scene_id = r.json()["id"]
+        
+    def scene_train(self):
+        url = self.local2server_url + "/train"
+        params = {
+            "object_id": self.server_scene_id
+        }
+        r = requests.post(url, params=params)
+        print(r.json["status"])
