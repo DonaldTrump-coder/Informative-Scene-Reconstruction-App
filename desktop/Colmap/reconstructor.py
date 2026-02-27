@@ -1,6 +1,7 @@
 import os
 import pycolmap
-from desktop.Colmap.folder import temp_images
+#from desktop.Colmap.folder import temp_images
+from folder import temp_images
 
 class constructor:
     def __init__(self, database):
@@ -22,9 +23,13 @@ class constructor:
     
     def add_image_folder(self, folder):
         self.image_path = folder
+        self.reader_options = pycolmap.ImageReaderOptions(
+            camera_model = "PINHOLE"
+        )
         pycolmap.import_images(
             database_path=self.db,
-            image_path = self.image_path
+            image_path = self.image_path,
+            options = self.reader_options
         )
 
     def sfm(self):
@@ -33,13 +38,9 @@ class constructor:
             use_gpu=False,         # 是否使用 GPU
             num_threads=4          # 提取特征线程数
         )
-        reader_options = pycolmap.ImageReaderOptions(
-            camera_model = "PINHOLE"
-        )
         pycolmap.extract_features(database_path=self.db,
                                   image_path=self.image_path,
-                                  camera_mode=pycolmap.CameraMode.SINGLE,
-                                  reader_options=reader_options,
+                                  reader_options=self.reader_options,
                                   extraction_options=sift_options
                                   )
         pycolmap.match_sequential(self.db)
@@ -49,6 +50,24 @@ class constructor:
         output_path=os.path.join(os.path.dirname(self.db), "sparse")
         )
         
+    def sfm_test(self):
+        os.makedirs(os.path.join(os.path.dirname(self.db), "sparse"), exist_ok=True)
+        sift_options = pycolmap.SiftExtractionOptions(
+            num_threads=4          # 提取特征线程数
+        )
+        pycolmap.extract_features(database_path=self.db,
+                                  image_path=self.image_path,
+                                  sift_options=sift_options,
+                                  camera_model = 'PINHOLE'
+                                  )
+        pycolmap.match_sequential(self.db)
+        reconstruction = pycolmap.incremental_mapping(
+        database_path=self.db,
+        image_path=self.image_path,
+        output_path=os.path.join(os.path.dirname(self.db), "sparse")
+        )
+        
 if __name__ == "__main__":
-    cons = constructor("C:\\Users\\10527\\Desktop\\project.db")
-    cons.add_images(["D:\\TanksandTemples\\Ballroom\\images\\00003.jpg"])
+    cons = constructor("D:\\Projects\\Informative-Scene-Reconstruction-App\\data\\playroom\\project.db")
+    cons.add_image_folder("D:\\Projects\\Informative-Scene-Reconstruction-App\\data\\playroom\\images")
+    cons.sfm_test()
