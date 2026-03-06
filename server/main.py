@@ -149,7 +149,7 @@ async def render_scene_ws(websocket: WebSocket):
             img = obj.render(K, R, t, H, W)
         
         if isinstance(img, torch.Tensor):
-            img = img.detach().cpu().numpy()
+            img = img.permute(1, 2, 0).detach().cpu().numpy()
         img = np.ascontiguousarray(img)
         img = (img * 255).astype(np.uint8)
         _, img_bytes = cv2.imencode(".jpg", img, [cv2.IMWRITE_JPEG_QUALITY, 80])
