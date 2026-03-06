@@ -32,7 +32,7 @@ class SceneObject:
     folder = None
     gaussians = None
     pp = None
-    bg_color = [1, 1, 1]
+    bg_color = torch.tensor([1,1,1], dtype=torch.float32, device="cuda")
     def __init__(self):
         self.train_status = "Not trained"
         self.training_lock = threading.Lock()

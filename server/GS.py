@@ -180,7 +180,7 @@ def train(input_path, output_path):
                 scene.save(iteration)
                 torch.save((gaussians.capture(), iteration), scene.model_path + "/chkpnt" + str(iteration) + ".pth")
                 
-                return gaussians, pp, bg_color
+                return gaussians, pp, background
                 
             if iteration < opt.densify_until_iter:
                 gaussians.max_radii2D[visibility_filter] = torch.max(gaussians.max_radii2D[visibility_filter], radii[visibility_filter])
