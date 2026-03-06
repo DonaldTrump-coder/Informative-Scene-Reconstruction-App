@@ -8,6 +8,10 @@ from tqdm import tqdm
 from server.internal.arguments import ParamGroup
 from server.internal.scene.cameras import MiniCam
 import numpy as np
+import math
+import os
+import re
+import glob
 
 try:
     from fused_ssim import fused_ssim
@@ -211,3 +215,26 @@ def GSrender(K, R, t, H, W, gaussians, pipe, bg_color):
                     )
     render_pkg = render(camera, gaussians, pipe, bg_color)
     return render_pkg["render"]
+
+def import_gs(GS_folder):
+    pth_files = glob.glob(os.path.join(GS_folder, "*.pth"))
+    pattern = re.compile(r"chkpnt(\d+)\.pth")
+    max_step = -1
+    max_file = None
+    
+    for pth_file in pth_files:
+        name = os.path.basename(f)
+        match = pattern.match(name)
+        if match:
+            step = int(match.group(1))
+            if step > max_step:
+                max_step = step
+                max_file = pth_file
+    
+    print("Loading:", max_file)
+    gaussians = GaussianModel(3, "default")
+    opt = OptimizationParams()
+    pp = PipelineParams()
+    model_params, _ = torch.load(max_file)
+    gaussians.restore(model_params, opt)
+    return gaussians, pp

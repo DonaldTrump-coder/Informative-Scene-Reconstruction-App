@@ -6,6 +6,7 @@ from desktop.ui.labelUI import LabelUI
 from desktop.render.Thread import RenderThread
 import os
 from desktop.render.rendermode import Status_mode
+import numpy as np
 
 class MainWindow(QMainWindow):
     def __init__(self, url):
@@ -14,6 +15,7 @@ class MainWindow(QMainWindow):
         self.resize(800, 600)
         self.renderthread = RenderThread()
         self.renderthread.local2server_url = url
+        self.renderthread.rendering_url = url + "/render"
         
         self.tool_button_group = QButtonGroup() # Tool group of toolbar
         self.tool_button_group.setExclusive(False)
@@ -244,60 +246,72 @@ class MainWindow(QMainWindow):
             self.events.discard(event.key())
             return True
         elif event.type() == QEvent.MouseButtonPress:
-            if self.pcd_display_mode == Status_mode.FREE:
+            if self.current_page == self.page2:
+                if self.pcd_display_mode == Status_mode.FREE:
+                    self.mouse_pressed = True
+                    self.last_mouse_pos = event.pos()
+                    self.mouse_button = event.button()
+                elif self.pcd_display_mode == Status_mode.SELECT:
+                    if event.button() == Qt.LeftButton:
+                        self.renderthread.select_bbox = None
+                        self.mouse_pressed = True
+                        self.origin = getattr(self.page2, 'gl_widget', None).mapFrom(self, event.pos())
+                elif self.pcd_display_mode == Status_mode.UNSELECT:
+                    if event.button() == Qt.LeftButton:
+                        self.renderthread.select_bbox = None
+                        self.mouse_pressed = True
+                        self.origin = getattr(self.page2, 'gl_widget', None).mapFrom(self, event.pos())
+            else:
                 self.mouse_pressed = True
                 self.last_mouse_pos = event.pos()
-                self.mouse_button = event.button()
-            elif self.pcd_display_mode == Status_mode.SELECT:
-                if event.button() == Qt.LeftButton:
-                    self.renderthread.select_bbox = None
-                    self.mouse_pressed = True
-                    self.origin = getattr(self.page2, 'gl_widget', None).mapFrom(self, event.pos())
-            elif self.pcd_display_mode == Status_mode.UNSELECT:
-                if event.button() == Qt.LeftButton:
-                    self.renderthread.select_bbox = None
-                    self.mouse_pressed = True
-                    self.origin = getattr(self.page2, 'gl_widget', None).mapFrom(self, event.pos())
             return True
         elif event.type() == QEvent.MouseMove and self.mouse_pressed:
-            if self.pcd_display_mode == Status_mode.FREE:
-                pos = event.pos()
-                dx = pos.x() - self.last_mouse_pos.x()
-                dy = pos.y() - self.last_mouse_pos.y()
-                self.last_mouse_pos = pos
-                self.renderthread.rotate(dx, dy)
-            elif self.pcd_display_mode == Status_mode.SELECT:
-                pos = getattr(self.page2, 'gl_widget', None).mapFrom(self, event.pos())
-                rect = QRect(self.origin, pos).normalized()
-                self.renderthread.select_bbox = (rect.left(), rect.top(), rect.right(), rect.bottom())
-                self.renderthread.display_bbox = True
-                self.renderthread.add_new_select()
-            elif self.pcd_display_mode == Status_mode.UNSELECT:
-                pos = getattr(self.page2, 'gl_widget', None).mapFrom(self, event.pos())
-                rect = QRect(self.origin, pos).normalized()
-                self.renderthread.select_bbox = (rect.left(), rect.top(), rect.right(), rect.bottom())
-                self.renderthread.display_bbox = True
-                self.renderthread.add_new_unselect()
+            if self.current_page == self.page2:
+                if self.pcd_display_mode == Status_mode.FREE:
+                    pos = event.pos()
+                    dx = pos.x() - self.last_mouse_pos.x()
+                    dy = pos.y() - self.last_mouse_pos.y()
+                    self.last_mouse_pos = pos
+                    self.renderthread.rotate(dx, dy)
+                elif self.pcd_display_mode == Status_mode.SELECT:
+                    pos = getattr(self.page2, 'gl_widget', None).mapFrom(self, event.pos())
+                    rect = QRect(self.origin, pos).normalized()
+                    self.renderthread.select_bbox = (rect.left(), rect.top(), rect.right(), rect.bottom())
+                    self.renderthread.display_bbox = True
+                    self.renderthread.add_new_select()
+                elif self.pcd_display_mode == Status_mode.UNSELECT:
+                    pos = getattr(self.page2, 'gl_widget', None).mapFrom(self, event.pos())
+                    rect = QRect(self.origin, pos).normalized()
+                    self.renderthread.select_bbox = (rect.left(), rect.top(), rect.right(), rect.bottom())
+                    self.renderthread.display_bbox = True
+                    self.renderthread.add_new_unselect()
+            else:
+                dir = event.pos() - self.last_mouse_pos
+                self.last_mouse_pos = event.pos()
+                self.renderthread.rotate_in_dir(np.array([dir.x(), dir.y()]))
             return True
         elif event.type() == QEvent.MouseButtonRelease:
-            if self.pcd_display_mode == Status_mode.FREE:
+            if self.current_page == self.page2:
+                if self.pcd_display_mode == Status_mode.FREE:
+                    self.mouse_pressed = False
+                elif self.pcd_display_mode == Status_mode.SELECT:
+                    pos = getattr(self.page2, 'gl_widget', None).mapFrom(self, event.pos())
+                    rect = QRect(self.origin, pos).normalized()
+                    self.renderthread.select_bbox = (rect.left(), rect.top(), rect.right(), rect.bottom())
+                    self.origin = QPoint()
+                    self.mouse_pressed = False
+                    self.renderthread.display_bbox = False
+                    self.renderthread.select()
+                elif self.pcd_display_mode == Status_mode.UNSELECT:
+                    pos = getattr(self.page2, 'gl_widget', None).mapFrom(self, event.pos())
+                    rect = QRect(self.origin, pos).normalized()
+                    self.renderthread.select_bbox = (rect.left(), rect.top(), rect.right(), rect.bottom())
+                    self.origin = QPoint()
+                    self.mouse_pressed = False
+                    self.renderthread.display_bbox = False
+                    self.renderthread.unselect()
+            else:
                 self.mouse_pressed = False
-            elif self.pcd_display_mode == Status_mode.SELECT:
-                pos = getattr(self.page2, 'gl_widget', None).mapFrom(self, event.pos())
-                rect = QRect(self.origin, pos).normalized()
-                self.renderthread.select_bbox = (rect.left(), rect.top(), rect.right(), rect.bottom())
-                self.origin = QPoint()
-                self.mouse_pressed = False
-                self.renderthread.display_bbox = False
-                self.renderthread.select()
-            elif self.pcd_display_mode == Status_mode.UNSELECT:
-                pos = getattr(self.page2, 'gl_widget', None).mapFrom(self, event.pos())
-                rect = QRect(self.origin, pos).normalized()
-                self.renderthread.select_bbox = (rect.left(), rect.top(), rect.right(), rect.bottom())
-                self.origin = QPoint()
-                self.mouse_pressed = False
-                self.renderthread.display_bbox = False
-                self.renderthread.unselect()
             return True
         
         return False

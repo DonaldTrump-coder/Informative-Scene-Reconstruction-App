@@ -10,6 +10,7 @@ from desktop.project import rec_project
 from desktop.Colmap.pcd import PCD, PCD_label
 import requests
 from desktop.Colmap.folder import temp_sparse
+import math
 
 class RenderThread(QThread):
     frame_ready = pyqtSignal(np.ndarray)
@@ -46,7 +47,8 @@ class RenderThread(QThread):
     bottom_v = None
     
     local2server_url = ""
-    server_scene_id = None
+    rendering_url = ""
+    server_scene_id = "c8ea47ea-5d6d-4be4-91ea-9c1cbf07a25c"
     
     # thread tools
     mutex = QMutex()
@@ -127,6 +129,31 @@ class RenderThread(QThread):
     def move_back(self, step = 0.1):
         dir = self.R[2 , :]
         self.T = -self.R @ (-self.R.T@self.T - step*dir)
+        
+    def rotate_in_dir(self, _2D_dir, step=math.pi/180):
+        _2D_dir = _2D_dir / np.linalg.norm(_2D_dir)
+        step1 = step * np.sign(_2D_dir[0])
+        step2 = step * np.sign(_2D_dir[1])
+        
+        c1, s1 = np.cos(step1), np.sin(step1)
+        c2, s2 = np.cos(step2), np.sin(step2)
+        
+        R1 = np.array([
+            [c1, 0, -s1],
+            [0, 1, 0],
+            [s1, 0, c1]
+        ])
+        R2 = np.array([
+            [1, 0, 0],
+            [0, c2, s2],
+            [0, -s2, c2]
+        ])
+        
+        R_ = R2 @ R1
+        
+        R = self.R
+        self.R = R_ @ R
+        self.T = self.R @ (R.T @ self.T)
         
     def rotate_in_z_clockwise(self, step = 0.01):
         c, s = np.cos(step), np.sin(-step)
@@ -216,7 +243,21 @@ class RenderThread(QThread):
                         image[int(top_v):int(bottom_v), int(left_u):int(right_u), :] = roi.astype(np.uint8)
                 else:
                     image = self.pcd.render()
+                self.frame_ready.emit(image)
                     
+            elif self.rendering_mode is Rendering_mode.RENDERING:
+                payload = {
+                    "object_id": self.server_scene_id,
+                    "K": K.tolist(),
+                    "R": R.tolist(),
+                    "t": T.tolist(),
+                    "H": H,
+                    "W": W
+                }
+                r = requests.post(self.rendering_url, json=payload)
+                shape = tuple(map(int, r.headers["X-Shape"].split(",")))
+                dtype = np.dtype(r.headers["X-Dtype"])
+                image = np.frombuffer(r.content, dtype=dtype).reshape(shape)
                 self.frame_ready.emit(image)
         if self.pcd is not None:
             self.pcd.close()
@@ -359,6 +400,7 @@ class RenderThread(QThread):
         self.pcd_labels.append(PCD_label(name, description, (xmin, ymin, zmin, xmax, ymax, zmax)))
         
     def upload_floder(self):
+        self.rendering_mode = Rendering_mode.NONE
         url = self.local2server_url + "/upload"
         temp_folder = os.path.join(self.project_folder, "temp")
         
@@ -373,6 +415,7 @@ class RenderThread(QThread):
         
         r = requests.post(url, files=files_to_upload)
         self.server_scene_id = r.json()["id"]
+        self.rendering_mode = Rendering_mode.PCD
         
     def scene_train(self):
         url = self.local2server_url + "/train"
@@ -380,4 +423,4 @@ class RenderThread(QThread):
             "object_id": self.server_scene_id
         }
         r = requests.post(url, params=params)
-        print(r.json["status"])
+        print(r.json()["status"])

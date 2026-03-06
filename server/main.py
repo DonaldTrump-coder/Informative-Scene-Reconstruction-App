@@ -10,7 +10,7 @@ import numpy as np
 import threading
 import uuid
 import os
-from server.GS import train as trainGS, GSrender as renderGS
+from server.GS import train as trainGS, GSrender as renderGS, import_gs as import_GS
 import torch
 
 class CameraParam(BaseModel):
@@ -32,7 +32,7 @@ class SceneObject:
     folder = None
     gaussians = None
     pp = None
-    bg_color = None
+    bg_color = [1, 1, 1]
     def __init__(self):
         self.train_status = "Not trained"
         self.training_lock = threading.Lock()
@@ -47,6 +47,9 @@ class SceneObject:
     
     def render(self, K, R, t, H, W):
         return renderGS(K, R, t, H, W, self.gaussians, self.pp, self.bg_color)
+    
+    def import_gs(self, GS_folder):
+        self.gaussians, self.pp = import_GS(GS_folder)
     
 scene_objects = {}  # id -> SceneObject
     
@@ -88,8 +91,13 @@ def run_training(obj: SceneObject):
 async def render_scene(cam: CameraParam = Body(...)):
     obj_id = cam.object_id
     if obj_id not in scene_objects:
-        return {"error": "ID not found"}
+        scene_object = SceneObject()
+        scene_object.object_id = obj_id
+        scene_object.folder = os.path.join(BASE_STORAGE, obj_id)
+        scene_objects[obj_id] = scene_object
     obj = scene_objects[obj_id]
+    if obj.gaussians is None:
+        obj.import_gs(os.path.join(OUTPUT, obj.object_id))
     K = np.array(cam.K, dtype=np.float32)
     R = np.array(cam.R, dtype=np.float32)
     t = np.array(cam.t, dtype=np.float32)
