@@ -201,7 +201,6 @@ def train(input_path, output_path):
                 gaussians.optimizer.zero_grad(set_to_none = True)
                 
 def GSrender(K, R, t, H, W, gaussians, pipe, bg_color):
-    start_time = time.time()
     fx = K[0, 0]
     fy = K[1, 1]
     projection_matrix = getProjectionMatrix(znear=0.01, zfar=100, fovX=2 * np.arctan(W / (2 * fx)), fovY=2 * np.arctan(H / (2 * fy))).transpose(0,1).cuda()
@@ -216,9 +215,6 @@ def GSrender(K, R, t, H, W, gaussians, pipe, bg_color):
                      full_proj_transform = (world_wiew.unsqueeze(0).bmm(projection_matrix.unsqueeze(0))).squeeze(0)
                     )
     render_pkg = render(camera, gaussians, pipe, bg_color)
-    end_time = time.time()
-    FPS = 1 / (end_time - start_time)
-    print("FPS:", FPS)
     return render_pkg["render"]
 
 def import_gs(GS_folder):

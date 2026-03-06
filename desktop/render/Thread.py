@@ -257,7 +257,7 @@ class RenderThread(QThread):
                 r = requests.post(self.rendering_url, json=payload)
                 shape = tuple(map(int, r.headers["X-Shape"].split(",")))
                 dtype = np.dtype(r.headers["X-Dtype"])
-                image = np.frombuffer(r.content, dtype=dtype).reshape(shape).transpose(1, 2, 0)
+                image = np.frombuffer(r.content, dtype=dtype).reshape(shape).transpose(1, 2, 0) * 255
                 self.frame_ready.emit(image)
         if self.pcd is not None:
             self.pcd.close()
