@@ -22,8 +22,8 @@ class RenderThread(QThread):
     K = None # [3x3]
     point_min = None
     point_max = None
-    W = 1920
-    H = 1080
+    W = 960
+    H = 540
 
     image_folder = None
     images = [] # images path list

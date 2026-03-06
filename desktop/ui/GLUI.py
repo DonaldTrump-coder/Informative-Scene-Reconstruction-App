@@ -25,7 +25,6 @@ class GLWidget(QOpenGLWidget):
         self.update()
 
     def paintGL(self):
-        start = time.time()
         self.makeCurrent()  # 确保当前上下文
         painter = QPainter(self)
         # 背景填充黑色
@@ -59,10 +58,6 @@ class GLWidget(QOpenGLWidget):
         pixmap = QPixmap.fromImage(qimg)
         painter.drawPixmap(x0, y0, disp_w, disp_h, pixmap)
         painter.end()
-        end = time.time()
-        dt = end - start
-        FPS = 1 / dt
-        print(f"FPS: {FPS:.2f} frames/s")
 
     def mousePressEvent(self, event):
         self.main_window.setFocus()
