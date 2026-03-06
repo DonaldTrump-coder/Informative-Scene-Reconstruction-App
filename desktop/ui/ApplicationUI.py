@@ -68,11 +68,12 @@ class MainWindow(QMainWindow):
         splitter = QSplitter(Qt.Horizontal)
 
         # 文件显示区：QListWidget
-        file_list_widget = QListWidget(page_widget)
+        if page == 1 or page == 2:
+            file_list_widget = QListWidget(page_widget)
 
-        left_container = QWidget()
-        left_layout = QVBoxLayout(left_container)
-        left_layout.addWidget(file_list_widget)
+            left_container = QWidget()
+            left_layout = QVBoxLayout(left_container)
+            left_layout.addWidget(file_list_widget)
         if page == 1:
             Button_widget = QWidget()
             left_layout.addWidget(Button_widget)
@@ -82,13 +83,14 @@ class MainWindow(QMainWindow):
             icon1 = QIcon("resources/play.png")
             button1.setIcon(icon1)
             button1.clicked.connect(self.start_sfm)
+            splitter.addWidget(left_container)
         elif page == 2:
             button1 = QPushButton("生成3DGS场景")
             left_layout.addWidget(button1)
             icon1 = QIcon("resources/play-button.png")
             button1.setIcon(icon1)
             button1.clicked.connect(self.start_server_training)
-        splitter.addWidget(left_container)  # 左侧显示文件列表
+            splitter.addWidget(left_container)
         
         if page == 2:
             self.tool_buttons = []
@@ -107,12 +109,13 @@ class MainWindow(QMainWindow):
         gl_widget = GLWidget(page_widget, mainwindow=self)
         splitter.addWidget(gl_widget)  # 右侧显示图像区域
         setattr(page_widget, 'gl_widget', gl_widget)
-        setattr(page_widget,'list_widget', file_list_widget)
+        if page == 1 or page == 2:
+            setattr(page_widget,'list_widget', file_list_widget)
 
         textWidget = QWidget()
         if page == 3:
             splitter.addWidget(textWidget)
-            splitter.setSizes([int(self.width() * 0.2), int(self.width() * 0.6), int(self.width() * 0.2)])
+            splitter.setSizes([int(self.width() * 0.8), int(self.width() * 0.2)])
         elif page == 2:
             splitter.widget(1).setFixedWidth(30)
             splitter.setSizes([int(self.width() * 0.17), 30, int(self.width() * 0.7)])

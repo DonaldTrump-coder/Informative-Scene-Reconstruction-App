@@ -64,8 +64,8 @@ class RenderThread(QThread):
         self.running=True
         self.fx = 933
         self.fy = 933
-        self.cx = 960
-        self.cy = 540
+        self.cx = self.W / 2
+        self.cy = self.H / 2
         self.K = np.array([[self.fx, 0, self.cx], [0, self.fy, self.cy], [0, 0, 1]])
         self.project = rec_project()
 
@@ -119,11 +119,17 @@ class RenderThread(QThread):
 
     def move_right(self, step=0.1):
         dir = self.R[0 , :]
-        self.T = -self.R @ (-self.R.T@self.T - step*dir)
+        if self.rendering_mode is Rendering_mode.PCD:
+            self.T = -self.R @ (-self.R.T@self.T - step*dir)
+        else:
+            self.T = -self.R @ (-self.R.T@self.T + step*dir)
         
     def move_left(self, step=0.1):
         dir = self.R[0 , :]
-        self.T = -self.R @ (-self.R.T@self.T + step*dir)
+        if self.rendering_mode is Rendering_mode.PCD:
+            self.T = -self.R @ (-self.R.T@self.T + step*dir)
+        else:
+            self.T = -self.R @ (-self.R.T@self.T - step*dir)
 
     def move_forward(self, step=0.1):
         dir = self.R[2 , :]
@@ -136,7 +142,7 @@ class RenderThread(QThread):
     def rotate_in_dir(self, _2D_dir, step=math.pi/180):
         _2D_dir = _2D_dir / np.linalg.norm(_2D_dir)
         step1 = step * np.sign(_2D_dir[0])
-        step2 = step * np.sign(_2D_dir[1])
+        step2 = -step * np.sign(_2D_dir[1])
         
         c1, s1 = np.cos(step1), np.sin(step1)
         c2, s2 = np.cos(step2), np.sin(step2)
