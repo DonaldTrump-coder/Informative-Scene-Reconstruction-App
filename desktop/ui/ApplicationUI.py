@@ -15,7 +15,7 @@ class MainWindow(QMainWindow):
         self.resize(800, 600)
         self.renderthread = RenderThread()
         self.renderthread.local2server_url = url
-        self.renderthread.rendering_url = url + "/render"
+        self.renderthread.rendering_url = url + "/ws/render"
         
         self.tool_button_group = QButtonGroup() # Tool group of toolbar
         self.tool_button_group.setExclusive(False)

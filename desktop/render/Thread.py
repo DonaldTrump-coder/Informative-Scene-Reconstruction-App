@@ -11,6 +11,9 @@ from desktop.Colmap.pcd import PCD, PCD_label
 import requests
 from desktop.Colmap.folder import temp_sparse
 import math
+import websocket
+import struct
+import json
 
 class RenderThread(QThread):
     frame_ready = pyqtSignal(np.ndarray)
@@ -201,6 +204,7 @@ class RenderThread(QThread):
     def run(self):
         self.R, self.T = get_init_camera(self.point_min,self.point_max)
         image = None
+        self.ws = websocket.create_connection(self.rendering_url.replace("http", "ws"))
         while self.running:
             self.mutex.lock()
             while self.paused:
@@ -254,11 +258,13 @@ class RenderThread(QThread):
                     "H": H,
                     "W": W
                 }
-                r = requests.post(self.rendering_url, json=payload)
-                shape = tuple(map(int, r.headers["X-Shape"].split(",")))
-                dtype = np.dtype(r.headers["X-Dtype"])
-                image = np.frombuffer(r.content, dtype=dtype).reshape(shape).transpose(1, 2, 0) * 255
-                self.frame_ready.emit(image)
+                self.ws.send(json.dumps(payload))
+                data = self.ws.recv()
+                img = cv2.imdecode(
+                    np.frombuffer(data, np.uint8),
+                    cv2.IMREAD_COLOR
+                )
+                self.frame_ready.emit(img)
         if self.pcd is not None:
             self.pcd.close()
             
