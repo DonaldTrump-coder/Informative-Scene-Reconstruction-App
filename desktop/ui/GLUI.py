@@ -62,6 +62,7 @@ class GLWidget(QOpenGLWidget):
         end = time.time()
         dt = end - start
         FPS = 1 / dt
+        print(f"FPS: {FPS:.2f} frames/s")
 
     def mousePressEvent(self, event):
         self.main_window.setFocus()
