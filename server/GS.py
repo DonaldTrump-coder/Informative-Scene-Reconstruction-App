@@ -223,7 +223,7 @@ def import_gs(GS_folder):
     max_file = None
     
     for pth_file in pth_files:
-        name = os.path.basename(f)
+        name = os.path.basename(pth_file)
         match = pattern.match(name)
         if match:
             step = int(match.group(1))
