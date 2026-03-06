@@ -97,7 +97,7 @@ class GaussianModel:
         #self.training_setup(training_args)
         self.xyz_gradient_accum = xyz_gradient_accum
         self.denom = denom
-        self.optimizer.load_state_dict(opt_dict)
+        #self.optimizer.load_state_dict(opt_dict)
 
     @property
     def get_scaling(self):
