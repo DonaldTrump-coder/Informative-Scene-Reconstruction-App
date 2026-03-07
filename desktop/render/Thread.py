@@ -14,10 +14,14 @@ import math
 import websocket
 import struct
 import json
+from desktop.LLM.AgentThread import AgentThread
+from server.webtools import is_server_running
 
 class RenderThread(QThread):
     frame_ready = pyqtSignal(np.ndarray)
     add_image_list = pyqtSignal(list)
+    start_new_signal = pyqtSignal()
+    update_text_signal = pyqtSignal(str)
     parser = None
     camera = None
     R = None # [3x3]
@@ -51,7 +55,8 @@ class RenderThread(QThread):
     
     local2server_url = ""
     rendering_url = ""
-    server_scene_id = "c8ea47ea-5d6d-4be4-91ea-9c1cbf07a25c"
+    server_scene_id = ""
+    server_running = True
     
     # thread tools
     mutex = QMutex()
@@ -70,6 +75,10 @@ class RenderThread(QThread):
         self.project = rec_project()
 
         self.project_set = False
+        self.agentthread = AgentThread()
+        self.agentthread.start_new_signal.connect(self.start_new_response)
+        self.agentthread.update_text_signal.connect(self.update_message)
+        self.agentthread.start()
 
     def set_project_path(self):
         # set path from a filedialog
@@ -210,7 +219,10 @@ class RenderThread(QThread):
     def run(self):
         self.R, self.T = get_init_camera(self.point_min,self.point_max)
         image = None
-        self.ws = websocket.create_connection(self.rendering_url.replace("http", "ws"))
+        if is_server_running(self.local2server_url):
+            self.ws = websocket.create_connection(self.rendering_url.replace("http", "ws"))
+        else:
+            self.server_running = False
         while self.running:
             self.mutex.lock()
             while self.paused:
@@ -256,6 +268,9 @@ class RenderThread(QThread):
                 self.frame_ready.emit(image)
                     
             elif self.rendering_mode is Rendering_mode.RENDERING:
+                self.agentthread.set_coordinate(R, T)
+                if not self.server_running:
+                    continue
                 payload = {
                     "object_id": self.server_scene_id,
                     "K": K.tolist(),
@@ -303,6 +318,7 @@ class RenderThread(QThread):
         self.frame_ready.emit(image)
 
     def stop(self):
+        self.agentthread.stop()
         self.running=False
         self.wait()
 
@@ -410,6 +426,7 @@ class RenderThread(QThread):
     def add_label(self, name, description):
         xmin, ymin, zmin, xmax, ymax, zmax = self.pcd.get_label_bbox()
         self.pcd_labels.append(PCD_label(name, description, (xmin, ymin, zmin, xmax, ymax, zmax)))
+        self.agentthread.set_pcd_labels(self.pcd_labels)
         
     def upload_floder(self):
         self.rendering_mode = Rendering_mode.NONE
@@ -436,3 +453,9 @@ class RenderThread(QThread):
         }
         r = requests.post(url, params=params)
         print(r.json()["status"])
+        
+    def start_new_response(self):
+        self.start_new_signal.emit()
+        
+    def update_message(self, token):
+        self.update_text_signal.emit(token)

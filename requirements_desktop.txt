@@ -9,3 +9,4 @@ pycolmap
 pyvista
 requests
 websocket-client
+openai

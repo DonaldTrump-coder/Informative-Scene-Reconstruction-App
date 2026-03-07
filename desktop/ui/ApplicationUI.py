@@ -1,4 +1,4 @@
-from PyQt5.QtWidgets import QMainWindow, QHBoxLayout, QWidget, QAction, QFileDialog, QActionGroup, QTabWidget, QListWidget, QSplitter, QListWidgetItem, QVBoxLayout, QPushButton, QToolButton, QSizePolicy, QButtonGroup, QDialog
+from PyQt5.QtWidgets import QMainWindow, QHBoxLayout, QWidget, QAction, QFileDialog, QActionGroup, QTabWidget, QListWidget, QSplitter, QListWidgetItem, QVBoxLayout, QPushButton, QToolButton, QSizePolicy, QButtonGroup, QDialog, QScrollArea, QLineEdit
 from PyQt5.QtCore import Qt, QEvent, QTimer, QSize, QRect, QPoint
 from PyQt5.QtGui import QIcon
 from desktop.ui.GLUI import GLWidget
@@ -7,6 +7,7 @@ from desktop.render.Thread import RenderThread
 import os
 from desktop.render.rendermode import Status_mode
 import numpy as np
+from desktop.ui.MessageBubble import MessageBubble
 
 class MainWindow(QMainWindow):
     def __init__(self, url):
@@ -55,6 +56,8 @@ class MainWindow(QMainWindow):
         
         self.renderthread.frame_ready.connect(self.current_gl.set_image)
         self.renderthread.add_image_list.connect(self.add_Image_names)
+        self.renderthread.start_new_signal.connect(self.start_bot_message)
+        self.renderthread.update_text_signal.connect(self.update_bot_message)
         self.renderthread.start()
         
         self.pcd_display_mode = Status_mode.FREE
@@ -78,7 +81,7 @@ class MainWindow(QMainWindow):
             Button_widget = QWidget()
             left_layout.addWidget(Button_widget)
             button_layout = QHBoxLayout(Button_widget)
-            button1 = QPushButton("按钮1")
+            button1 = QPushButton("点云重建")
             button_layout.addWidget(button1)
             icon1 = QIcon("resources/play.png")
             button1.setIcon(icon1)
@@ -116,6 +119,27 @@ class MainWindow(QMainWindow):
         if page == 3:
             splitter.addWidget(textWidget)
             splitter.setSizes([int(self.width() * 0.8), int(self.width() * 0.2)])
+            
+            textlayout = QVBoxLayout(textWidget)
+            title_widget = QWidget()
+            textlayout.addWidget(title_widget)
+            self.chat_scroll = QScrollArea()
+            self.chat_scroll.setWidgetResizable(True)
+            self.chat_container = QWidget()
+            self.chat_layout = QVBoxLayout(self.chat_container)
+            self.chat_layout.setAlignment(Qt.AlignTop)
+            self.chat_scroll.setWidget(self.chat_container)
+            textlayout.addWidget(self.chat_scroll)
+            self.chat_input = QLineEdit()
+            send_button = QPushButton("发送")
+            send_button.setFixedWidth(50)
+            input_layout = QHBoxLayout()
+            input_layout.addWidget(self.chat_input)
+            input_layout.addWidget(send_button)
+            input_layout.setStretch(0, 6)
+            input_layout.setStretch(1, 1)
+            textlayout.addLayout(input_layout)
+            send_button.clicked.connect(self.send_message)
         elif page == 2:
             splitter.widget(1).setFixedWidth(30)
             splitter.setSizes([int(self.width() * 0.17), 30, int(self.width() * 0.7)])
@@ -132,18 +156,21 @@ class MainWindow(QMainWindow):
             self.current_list = getattr(self.page1, 'list_widget', None)
             self.current_page = self.page1
             self.renderthread.frame_ready.connect(self.current_gl.set_image)
+            self.renderthread.agentthread.llm_using = False
         elif index == 1:
             self.set_pcd()
             self.current_gl = getattr(self.page2, 'gl_widget', None)
             self.current_list = getattr(self.page2, 'list_widget', None)
             self.current_page = self.page2
             self.renderthread.frame_ready.connect(self.current_gl.set_image)
+            self.renderthread.agentthread.llm_using = False
         elif index == 2:
             self.set_3DGS_RGB()
             self.current_gl = getattr(self.page3, 'gl_widget', None)
             self.current_list = getattr(self.page3, 'list_widget', None)
             self.current_page = self.page3
             self.renderthread.frame_ready.connect(self.current_gl.set_image)
+            self.renderthread.agentthread.llm_using = True
 
     def init_menu(self):
         menubar=self.menuBar()
@@ -369,3 +396,27 @@ class MainWindow(QMainWindow):
         
     def start_sfm(self):
         self.renderthread.start_sfm()
+        
+    def add_user_message(self, text):
+        bubble = MessageBubble(text, True)
+        self.chat_layout.addWidget(bubble)
+        
+    def start_bot_message(self):
+        self.current_bot_bubble = MessageBubble("", False)
+        self.chat_layout.addWidget(self.current_bot_bubble)
+        self.current_text = ""
+        
+    def update_bot_message(self, token):
+        self.current_text += token
+        self.current_bot_bubble.update_text(self.current_text)
+        
+        # scroll automatically
+        self.chat_scroll.verticalScrollBar().setValue(
+            self.chat_scroll.verticalScrollBar().maximum()
+        )
+        
+    def send_message(self):
+        text = self.chat_input.text()
+        self.chat_input.clear()
+        self.add_user_message(text)
+        self.renderthread.agentthread.send_message(text)
