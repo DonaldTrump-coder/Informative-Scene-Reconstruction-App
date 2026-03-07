@@ -55,7 +55,7 @@ class RenderThread(QThread):
     
     local2server_url = ""
     rendering_url = ""
-    server_scene_id = ""
+    server_scene_id = "ddb5d39a-12f8-464c-a92e-bab37b66e12c"
     server_running = True
     
     # thread tools
