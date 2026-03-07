@@ -16,6 +16,7 @@ import struct
 import json
 from desktop.LLM.AgentThread import AgentThread
 from server.webtools import is_server_running
+from desktop.render.WSthread import WSThread
 
 class RenderThread(QThread):
     frame_ready = pyqtSignal(np.ndarray)
@@ -220,7 +221,7 @@ class RenderThread(QThread):
         self.R, self.T = get_init_camera(self.point_min,self.point_max)
         image = None
         if is_server_running(self.local2server_url):
-            self.ws = websocket.create_connection(self.rendering_url.replace("http", "ws"))
+            self.ws = WSThread(self.rendering_url.replace("http", "ws"))
         else:
             self.server_running = False
         while self.running:
@@ -279,13 +280,14 @@ class RenderThread(QThread):
                     "H": H,
                     "W": W
                 }
-                self.ws.send(json.dumps(payload))
-                data = self.ws.recv()
-                img = cv2.imdecode(
-                    np.frombuffer(data, np.uint8),
-                    cv2.IMREAD_COLOR
-                )
-                self.frame_ready.emit(img)
+                self.ws.send_payload(payload)
+                data = self.ws.get_result()
+                if data is not None:
+                    img = cv2.imdecode(
+                        np.frombuffer(data, np.uint8),
+                        cv2.IMREAD_COLOR
+                    )
+                    self.frame_ready.emit(img)
         if self.pcd is not None:
             self.pcd.close()
             
