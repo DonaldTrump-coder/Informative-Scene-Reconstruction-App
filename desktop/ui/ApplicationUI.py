@@ -1,8 +1,9 @@
-from PyQt5.QtWidgets import QMainWindow, QHBoxLayout, QWidget, QAction, QFileDialog, QActionGroup, QTabWidget, QListWidget, QSplitter, QListWidgetItem, QVBoxLayout, QPushButton, QToolButton, QSizePolicy, QButtonGroup, QDialog, QScrollArea, QLineEdit
-from PyQt5.QtCore import Qt, QEvent, QTimer, QSize, QRect, QPoint
+from PyQt5.QtWidgets import QMainWindow, QHBoxLayout, QWidget, QAction, QFileDialog, QActionGroup, QTabWidget, QListWidget, QSplitter, QListWidgetItem, QVBoxLayout, QPushButton, QToolButton, QSizePolicy, QButtonGroup, QDialog, QScrollArea, QLineEdit, QLabel
+from PyQt5.QtCore import Qt, QEvent, QTimer, QSize, QRect, QPoint, pyqtSignal
 from PyQt5.QtGui import QIcon
 from desktop.ui.GLUI import GLWidget
 from desktop.ui.labelUI import LabelUI
+from desktop.ui.ProgressDialog import SfM_ProgressDialog
 from desktop.render.Thread import RenderThread
 import os
 from desktop.render.rendermode import Status_mode
@@ -12,7 +13,8 @@ from desktop.ui.MessageBubble import MessageBubble
 class MainWindow(QMainWindow):
     def __init__(self, url):
         super().__init__()
-        self.setWindowTitle("LLM Scene Viewer V0.0.0")
+        self.setWindowTitle("LLM Scene Viewer V0.0.1")
+        self.setWindowIcon(QIcon("resources/app.png"))
         self.resize(800, 600)
         self.renderthread = RenderThread()
         self.renderthread.local2server_url = url
@@ -121,8 +123,29 @@ class MainWindow(QMainWindow):
             splitter.setSizes([int(self.width() * 0.8), int(self.width() * 0.2)])
             
             textlayout = QVBoxLayout(textWidget)
+            
             title_widget = QWidget()
             textlayout.addWidget(title_widget)
+            title_layout = QHBoxLayout(title_widget)
+            icon_label = QLabel()
+            icon = QIcon("resources/bot_title.png")
+            icon_label.setPixmap(icon.pixmap(QSize(30, 30)))
+            title_label = QLabel("智能体导览区")
+            title_label.setAlignment(Qt.AlignCenter)
+            title_label.setStyleSheet(
+                """
+                QLabel{
+                    font-size:25px;
+                    font-weight:bold;
+                    font-family: SimHei;
+                }
+                """
+            )
+            title_layout.addStretch(1)
+            title_layout.addWidget(icon_label)
+            title_layout.addWidget(title_label)
+            title_layout.addStretch(1)
+            
             self.chat_scroll = QScrollArea()
             self.chat_scroll.setWidgetResizable(True)
             self.chat_container = QWidget()
@@ -395,7 +418,20 @@ class MainWindow(QMainWindow):
         self.renderthread.scene_train()
         
     def start_sfm(self):
+        self.sfm_progressdialog = SfM_ProgressDialog("Running SfM...", "Cancel", 0, 100, self)
+        self.sfm_progressdialog.setWindowTitle("SfM Progress")
+        self.sfm_progressdialog.setWindowModality(Qt.WindowModality.ApplicationModal)
+        self.sfm_progressdialog.canceled.connect(self.renderthread.sfm_stop)
+        self.sfm_progressdialog.show()
+        
+        self.renderthread.sfm_progress.connect(self.sfm_progressdialog.setValue)
+        self.renderthread.sfm_canceled.connect(self.sfm_progressdialog.close)
+        self.renderthread.sfm_finished.connect(self.on_sfm_finished)
+        
         self.renderthread.start_sfm()
+    
+    def on_sfm_finished(self):
+        self.sfm_progressdialog.close()
         
     def add_user_message(self, text):
         bubble = MessageBubble(text, True)
@@ -416,7 +452,9 @@ class MainWindow(QMainWindow):
         )
         
     def send_message(self):
-        text = self.chat_input.text()
+        text = self.chat_input.text().strip()
+        if not text:
+            return
         self.chat_input.clear()
         self.add_user_message(text)
-        self.renderthread.agentthread.send_message(text)
+        self.renderthread.agentthread.send_message_signal.emit(text)

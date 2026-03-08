@@ -2,6 +2,7 @@ from PyQt5.QtCore import QThread, QMutex, QWaitCondition, pyqtSignal
 from desktop.LLM.LLMtools import LLM
 import numpy as np
 from desktop.Colmap.pcd import PCD_label
+import time
 
 class AgentThread(QThread):
     
@@ -12,6 +13,7 @@ class AgentThread(QThread):
     
     start_new_signal = pyqtSignal()
     update_text_signal = pyqtSignal(str)
+    send_message_signal = pyqtSignal(str)
     
     def __init__(self):
         super().__init__()
@@ -32,10 +34,18 @@ class AgentThread(QThread):
         self.description_prompts = "，对应的描述是："
         self.messages = []
         self.last_response = ""
+        self.send_message_signal.connect(self.set_sendmessage_mode)
+        
+        self.text_send = ""
+        self.send_mode = False
         
     def run(self):
         while self.running:
             if self.llm_using:
+                if self.send_mode == True:
+                    self.send_message(self.text_send)
+                    self.send_mode = False
+                
                 self.mutex.lock()
                 pcd_labels = None if self.pcd_labels is None else self.pcd_labels
                 label_coor = None if self.label_coor is None else self.label_coor.copy()
@@ -93,6 +103,10 @@ class AgentThread(QThread):
         self.pcd_labels = labels
         self.label_coor = np.array([label.bbox for label in labels], dtype=np.float32)
         self.mutex.unlock()
+        
+    def set_sendmessage_mode(self, text):
+        self.text_send = text
+        self.send_mode = True
         
     def send_message(self, text):
         message = {'role': 'user', 'content': text}

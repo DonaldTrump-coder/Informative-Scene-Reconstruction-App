@@ -1,4 +1,4 @@
-from PyQt5.QtCore import QThread, pyqtSignal, QMutex, QWaitCondition
+from PyQt5.QtCore import QThread, pyqtSignal, QMutex, QWaitCondition, QObject
 import numpy as np
 from desktop.render.rendermode import Rendering_mode, Status_mode
 from desktop.render.cameras import get_init_camera
@@ -23,6 +23,9 @@ class RenderThread(QThread):
     add_image_list = pyqtSignal(list)
     start_new_signal = pyqtSignal()
     update_text_signal = pyqtSignal(str)
+    sfm_progress = pyqtSignal(int)
+    sfm_finished = pyqtSignal()
+    sfm_canceled = pyqtSignal()
     parser = None
     camera = None
     R = None # [3x3]
@@ -128,6 +131,8 @@ class RenderThread(QThread):
         self.set_simple_image()
 
     def move_right(self, step=0.1):
+        if self.R is None:
+            return
         dir = self.R[0 , :]
         if self.rendering_mode is Rendering_mode.PCD:
             self.T = -self.R @ (-self.R.T@self.T - step*dir)
@@ -135,6 +140,8 @@ class RenderThread(QThread):
             self.T = -self.R @ (-self.R.T@self.T + step*dir)
         
     def move_left(self, step=0.1):
+        if self.R is None:
+            return
         dir = self.R[0 , :]
         if self.rendering_mode is Rendering_mode.PCD:
             self.T = -self.R @ (-self.R.T@self.T + step*dir)
@@ -142,14 +149,20 @@ class RenderThread(QThread):
             self.T = -self.R @ (-self.R.T@self.T - step*dir)
 
     def move_forward(self, step=0.1):
+        if self.R is None:
+            return
         dir = self.R[2 , :]
         self.T = -self.R @ (-self.R.T@self.T + step*dir)
 
     def move_back(self, step = 0.1):
+        if self.R is None:
+            return
         dir = self.R[2 , :]
         self.T = -self.R @ (-self.R.T@self.T - step*dir)
         
     def rotate_in_dir(self, _2D_dir, step=math.pi/180):
+        if self.R is None:
+            return
         _2D_dir = _2D_dir / np.linalg.norm(_2D_dir)
         step1 = step * np.sign(_2D_dir[0])
         step2 = -step * np.sign(_2D_dir[1])
@@ -175,6 +188,8 @@ class RenderThread(QThread):
         self.T = self.R @ (R.T @ self.T)
         
     def rotate_in_z_clockwise(self, step = 0.01):
+        if self.R is None:
+            return
         c, s = np.cos(step), np.sin(-step)
         Rz = np.array([[c, -s, 0], [s, c, 0], [0, 0, 1]])
         C = -self.R.T @ self.T
@@ -182,6 +197,8 @@ class RenderThread(QThread):
         self.T = -self.R @ C
         
     def rotate_in_z_anticlockwise(self, step = 0.01):
+        if self.R is None:
+            return
         c, s = np.cos(step), np.sin(step)
         Rz = np.array([[c, -s, 0], [s, c, 0], [0, 0, 1]])
         C = -self.R.T @ self.T
@@ -189,6 +206,8 @@ class RenderThread(QThread):
         self.T = -self.R @ C
         
     def rotate(self, dx, dy, sensitivity=0.01):
+        if self.R is None:
+            return
         yaw   = dx * sensitivity # left-right
         pitch = dy * sensitivity # up-down
         Ry = self.rotation_y(yaw)
@@ -242,10 +261,12 @@ class RenderThread(QThread):
             W = self.W
             
             self.mutex.unlock()
+            if not R or not T or not K:
+                continue
             
             # rendering cores:
             if self.rendering_mode is Rendering_mode.NONE or self.rendering_mode is Rendering_mode.IMAGE:
-                pass
+                continue
             if self.rendering_mode is Rendering_mode.PCD:
                 self.pcd.set_camera(R, T, H, W, K)
                 if select_bbox is not None:
@@ -323,14 +344,36 @@ class RenderThread(QThread):
         self.agentthread.stop()
         self.running=False
         self.wait()
-
+        
+    # SFM control
     def start_sfm(self):
         # sfm reconstruction with images
         if self.project_set:
-            self.reconstructor.add_images(self.images)
-            self.reconstructor.sfm()
-            temp_sparse(os.path.join(self.project_folder, "temp"), self.sparse_folder)
+            self.sfm_thread = QThread()
+            self.sfm_worker = SFMWorker(self.reconstructor, self.images, self.project_folder, self.sparse_folder)
+            self.sfm_worker.moveToThread(self.sfm_thread)
             
+            self.sfm_worker.progress.connect(self.sfm_progress.emit)
+            self.sfm_worker.finished.connect(self._on_sfm_finished)
+            self.sfm_worker.canceled.connect(self._on_sfm_canceled)
+            self.sfm_thread.started.connect(self.sfm_worker.run)
+            self.sfm_worker.finished.connect(self.sfm_thread.quit)
+            self.sfm_worker.finished.connect(self.sfm_worker.deleteLater)
+            self.sfm_thread.finished.connect(self.sfm_thread.deleteLater)
+            
+            self.sfm_thread.start()
+            
+    def sfm_stop(self):
+        if self.sfm_worker:
+            self.sfm_worker.stop()
+    
+    def _on_sfm_finished(self):
+        self.sfm_finished.emit()
+        
+    def _on_sfm_canceled(self):
+        self.sfm_canceled.emit()
+    
+    # PCD Selection
     def add_new_select(self):
         if self.select_bbox is None:
             return
@@ -461,3 +504,25 @@ class RenderThread(QThread):
         
     def update_message(self, token):
         self.update_text_signal.emit(token)
+        
+class SFMWorker(QObject):
+    progress = pyqtSignal(int)
+    finished = pyqtSignal()
+    canceled = pyqtSignal()
+    
+    def __init__(self, reconstructor, images, project_folder, sparse_folder):
+        super().__init__()
+        self.reconstructor = reconstructor
+        self.images = images
+        self.project_folder = project_folder
+        self.sparse_folder = sparse_folder
+        self._is_running = True
+        
+    def run(self):
+        self.reconstructor.add_images(self.images)
+        self.reconstructor.sfm()
+        temp_sparse(os.path.join(self.project_folder, "temp"), self.sparse_folder)
+        self.finished.emit()
+        
+    def stop(self):
+        self._is_running = False
