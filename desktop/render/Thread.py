@@ -17,6 +17,8 @@ import json
 from desktop.LLM.AgentThread import AgentThread
 from server.webtools import is_server_running
 from desktop.render.WSthread import WSThread
+from PyQt5.QtWidgets import QMessageBox
+import time
 
 class RenderThread(QThread):
     frame_ready = pyqtSignal(np.ndarray)
@@ -103,10 +105,13 @@ class RenderThread(QThread):
     def set_image(self):
         self.rendering_mode = Rendering_mode.IMAGE
         
-    def set_pcd(self):
+    def set_pcd(self): # Setting pointcloud mode when tab is changed
         if self.pcd is not None:
             self.rendering_mode = Rendering_mode.PCD
         else:
+            if self.sparse_folder is None:
+                QMessageBox.warning(None, "Warning", "当前未设置项目！")
+                return
             self.pcd = PCD(
                 os.path.join(self.sparse_folder, "0", "cameras.bin"),
                 os.path.join(self.sparse_folder, "0", "images.bin"),
@@ -364,8 +369,12 @@ class RenderThread(QThread):
             self.sfm_thread.start()
             
     def sfm_stop(self):
+        time.sleep(0.5)
         if self.sfm_worker:
             self.sfm_worker.stop()
+        
+        if self.sfm_thread and self.sfm_thread.isRunning():
+            self.sfm_thread.quit()
     
     def _on_sfm_finished(self):
         self.sfm_finished.emit()
@@ -513,16 +522,39 @@ class SFMWorker(QObject):
     def __init__(self, reconstructor, images, project_folder, sparse_folder):
         super().__init__()
         self.reconstructor = reconstructor
+        self.reconstructor.running = True
         self.images = images
         self.project_folder = project_folder
         self.sparse_folder = sparse_folder
         self._is_running = True
         
     def run(self):
-        self.reconstructor.add_images(self.images)
-        self.reconstructor.sfm()
-        temp_sparse(os.path.join(self.project_folder, "temp"), self.sparse_folder)
+        def progress_callback(step, total):
+            if not self._is_running:
+                raise Exception("Canceled")
+            percent = int(step / total * 100)
+            self.progress.emit(percent)
+            
+        if self._is_running:
+            self.reconstructor.add_images(self.images)
+        else:
+            self.canceled.emit()
+            return
+        
+        if self._is_running:
+            self.reconstructor.sfm(progress_callback)
+        else:
+            self.canceled.emit()
+            return
+        
+        if self._is_running:
+            temp_sparse(os.path.join(self.project_folder, "temp"), self.sparse_folder)
+        else:
+            self.canceled.emit()
+            return
+        
         self.finished.emit()
         
     def stop(self):
         self._is_running = False
+        self.reconstructor.running = False

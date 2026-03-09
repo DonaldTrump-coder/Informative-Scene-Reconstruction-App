@@ -1,10 +1,12 @@
 import os
 import pycolmap
 from desktop.Colmap.folder import temp_images
+import shutil
 
 class constructor:
     def __init__(self, database):
         self.db = database # path to DataBase
+        self.running = True
         with open(self.db, 'w'):
             pass
 
@@ -36,42 +38,58 @@ class constructor:
             options = self.reader_options
         )
 
-    def sfm(self):
-        os.makedirs(os.path.join(os.path.dirname(self.db), "output", "sparse"))
-        sift_options = pycolmap.FeatureExtractionOptions(
-            use_gpu=False,         # 是否使用 GPU
-            num_threads=4          # 提取特征线程数
-        )
-        pycolmap.extract_features(database_path=self.db,
+    def sfm(self, progress_callback=None):
+        total_steps = 3
+        step = 0
+        
+        if self.running:
+            sparse_path = os.path.join(os.path.dirname(self.db), "output", "sparse")
+            if os.path.exists(sparse_path):
+                shutil.rmtree(sparse_path)
+            os.makedirs(sparse_path)
+            step += 1
+        else:
+            return
+        if progress_callback:
+            progress_callback(step, total_steps)
+        
+        if self.running:
+            sift_options = pycolmap.FeatureExtractionOptions(
+                use_gpu=False,
+                num_threads=4
+            )
+            pycolmap.extract_features(database_path=self.db,
                                   image_path=self.image_path,
                                   reader_options=self.reader_options,
                                   extraction_options=sift_options
                                   )
-        pycolmap.match_sequential(self.db)
-        reconstruction = pycolmap.incremental_mapping(
-        database_path=self.db,
-        image_path=self.image_path,
-        output_path=os.path.join(os.path.dirname(self.db), "output", "sparse")
-        )
-        
-    def sfm_test(self):
-        os.makedirs(os.path.join(os.path.dirname(self.db), "output", "sparse"), exist_ok=True)
-        sift_options = pycolmap.SiftExtractionOptions(
-            num_threads=4          # 提取特征线程数
-        )
-        pycolmap.extract_features(database_path=self.db,
-                                  image_path=self.image_path,
-                                  sift_options=sift_options,
-                                  camera_model = 'PINHOLE'
-                                  )
-        pycolmap.match_sequential(self.db)
-        reconstruction = pycolmap.incremental_mapping(
-        database_path=self.db,
-        image_path=self.image_path,
-        output_path=os.path.join(os.path.dirname(self.db), "output", "sparse")
-        )
+            step += 1
+        else:
+            return
+        if progress_callback:
+            progress_callback(step, total_steps)
+            
+        if self.running:
+            pycolmap.match_sequential(self.db)
+            step += 1
+        else:
+            return
+        if progress_callback:
+            progress_callback(step, total_steps)
+            
+        if self.running:
+            pycolmap.incremental_mapping(
+            database_path=self.db,
+            image_path=self.image_path,
+            output_path=os.path.join(os.path.dirname(self.db), "output", "sparse")
+            )
+            step += 1
+        else:
+            return
+        if progress_callback:
+            progress_callback(step, total_steps)
         
 if __name__ == "__main__":
     cons = constructor("D:\\Projects\\Informative-Scene-Reconstruction-App\\data\\playroom\\project.db")
     cons.add_image_folder("D:\\Projects\\Informative-Scene-Reconstruction-App\\data\\playroom\\images")
-    cons.sfm_test()
+    #cons.sfm_test()

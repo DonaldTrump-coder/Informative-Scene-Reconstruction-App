@@ -1,4 +1,4 @@
-from PyQt5.QtWidgets import QMainWindow, QHBoxLayout, QWidget, QAction, QFileDialog, QActionGroup, QTabWidget, QListWidget, QSplitter, QListWidgetItem, QVBoxLayout, QPushButton, QToolButton, QSizePolicy, QButtonGroup, QDialog, QScrollArea, QLineEdit, QLabel
+from PyQt5.QtWidgets import QMainWindow, QHBoxLayout, QWidget, QAction, QFileDialog, QActionGroup, QTabWidget, QListWidget, QSplitter, QListWidgetItem, QVBoxLayout, QPushButton, QToolButton, QSizePolicy, QButtonGroup, QDialog, QScrollArea, QLineEdit, QLabel, QApplication
 from PyQt5.QtCore import Qt, QEvent, QTimer, QSize, QRect, QPoint, pyqtSignal
 from PyQt5.QtGui import QIcon
 from desktop.ui.GLUI import GLWidget
@@ -421,7 +421,7 @@ class MainWindow(QMainWindow):
         self.sfm_progressdialog = SfM_ProgressDialog("Running SfM...", "Cancel", 0, 100, self)
         self.sfm_progressdialog.setWindowTitle("SfM Progress")
         self.sfm_progressdialog.setWindowModality(Qt.WindowModality.ApplicationModal)
-        self.sfm_progressdialog.canceled.connect(self.renderthread.sfm_stop)
+        self.sfm_progressdialog.cancelClicked.connect(self.on_cancel_sfm)
         self.sfm_progressdialog.show()
         
         self.renderthread.sfm_progress.connect(self.sfm_progressdialog.setValue)
@@ -429,6 +429,14 @@ class MainWindow(QMainWindow):
         self.renderthread.sfm_finished.connect(self.on_sfm_finished)
         
         self.renderthread.start_sfm()
+        
+    def on_cancel_sfm(self):
+        self.sfm_progressdialog.setLabelText("正在结束...")
+        btn = self.sfm_progressdialog.findChild(QPushButton)
+        if btn:
+            btn.setEnabled(False)
+        QApplication.processEvents()
+        QTimer.singleShot(0, self.renderthread.sfm_stop)
     
     def on_sfm_finished(self):
         self.sfm_progressdialog.close()
