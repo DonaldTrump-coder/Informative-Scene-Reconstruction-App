@@ -39,12 +39,18 @@ class SceneObject:
         self.training_lock = threading.Lock()
         self.render_lock = threading.Lock()
         self.bg_color = torch.tensor([1,1,1], dtype=torch.float32, device="cuda")
+        self.current_step = 0
+        self.training = True
         
     def train(self):
+        def step_update(step):
+            self.current_step = step
+            return self.training # True: training; False: stop training
         input_folder = self.folder
         output_folder = os.path.join(OUTPUT, self.object_id)
         os.makedirs(output_folder, exist_ok=True)
-        self.gaussians, self.pp, self.bg_color = trainGS(input_folder, output_folder)
+        self.gaussians, self.pp, self.bg_color = trainGS(input_folder, output_folder, step_callback=step_update)
+        self.current_step = 30000
         self.train_status = "Trained"
     
     def render(self, K, R, t, H, W):
@@ -76,6 +82,13 @@ async def upload_files(files: list[UploadFile] = File(...)
     scene_objects[object_id] = scene_object
     
     return {"status": "uploaded", "id": object_id}
+
+@app.get("/steps")
+async def get_current_step(object_id: str):
+    if object_id not in scene_objects:
+        return {"error": "ID not found"}
+    obj = scene_objects[object_id]
+    return {"step": obj.current_step}
 
 @app.post("/train")
 async def train_scene(object_id: str, background_tasks: BackgroundTasks):
@@ -163,3 +176,12 @@ async def render_scene_ws(websocket: WebSocket):
 @app.post("/destroy")
 async def destroy_scene(object_id: str):
     pass
+
+@app.post("/stop")
+async def stop_training(object_id: str):
+    obj_id = object_id
+    if obj_id not in scene_objects:
+        return {"error": "ID not found"}
+    obj = scene_objects[obj_id]
+    obj.training = False
+    return {"status": "stopped"}

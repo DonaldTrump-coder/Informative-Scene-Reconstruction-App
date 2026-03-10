@@ -414,8 +414,74 @@ class MainWindow(QMainWindow):
         return super().resizeEvent(event)
     
     def start_server_training(self):
+        self.uploaded = False
+        self.upload_progressdialog = SfM_ProgressDialog(
+            "上传中...",
+            "取消",
+            0,
+            100,
+            self
+        )
+        self.upload_progressdialog.setWindowTitle("上传本地文件")
+        self.upload_progressdialog.setWindowModality(Qt.WindowModality.ApplicationModal)
+        self.upload_progressdialog.cancelClicked.connect(self.on_cancel_upload)
+        self.renderthread.upload_progress.connect(
+            self.upload_progressdialog.setValue
+        )
+        self.renderthread.upload_finished.connect(
+            self.on_upload_finished
+        )
+        self.renderthread.upload_canceled.connect(self.upload_progressdialog.close)
+        self.upload_progressdialog.show()
         self.renderthread.upload_floder()
-        self.renderthread.scene_train()
+        
+        if self.uploaded:
+            self.training_progressdialog = SfM_ProgressDialog(
+                "正在训练...",
+                "取消",
+                0,
+                100,
+                self
+            )
+            self.training_progressdialog.setWindowTitle("正在训练...")
+            self.training_progressdialog.setWindowModality(Qt.WindowModality.ApplicationModal)
+            self.training_progressdialog.cancelClicked.connect(self.on_cancel_training)
+            self.renderthread.train_progress.connect(
+                self.training_progressdialog.setValue
+            )
+            self.renderthread.train_finished.connect(
+                self.on_train_finished
+            )
+            self.renderthread.train_canceled.connect(self.training_progressdialog.close)
+            self.training_progressdialog.show()
+            self.renderthread.scene_train()
+            
+    def on_train_finished(self):
+        self.training_progressdialog.close()
+        self.training_progressdialog.deleteLater()
+        
+    def on_cancel_training(self):
+        self.training_progressdialog.setLabelText("正在取消...")
+        btn = self.training_progressdialog.findChild(QPushButton)
+        if btn:
+            btn.setEnabled(False)
+        QApplication.processEvents()
+        QTimer.singleShot(0, self.renderthread.train_cancel)
+        
+    def on_cancel_upload(self):
+        self.uploaded = False
+        self.upload_progressdialog.setLabelText("正在取消...")
+        btn = self.upload_progressdialog.findChild(QPushButton)
+        if btn:
+            btn.setEnabled(False)
+        QApplication.processEvents()
+        QTimer.singleShot(0, self.renderthread.upload_cancel)
+    
+    def on_upload_finished(self):
+        self.uploaded = True
+        if self.upload_progressdialog:
+            self.upload_progressdialog.close()
+            self.upload_progressdialog.deleteLater()
         
     def start_sfm(self):
         self.sfm_progressdialog = SfM_ProgressDialog("Running SfM...", "Cancel", 0, 100, self)

@@ -28,6 +28,12 @@ class RenderThread(QThread):
     sfm_progress = pyqtSignal(int)
     sfm_finished = pyqtSignal()
     sfm_canceled = pyqtSignal()
+    upload_progress = pyqtSignal(int)
+    upload_finished = pyqtSignal()
+    upload_canceled = pyqtSignal()
+    train_progress = pyqtSignal(int)
+    train_finished = pyqtSignal()
+    train_canceled = pyqtSignal()
     parser = None
     camera = None
     R = None # [3x3]
@@ -61,7 +67,7 @@ class RenderThread(QThread):
     
     local2server_url = ""
     rendering_url = ""
-    server_scene_id = "ddb5d39a-12f8-464c-a92e-bab37b66e12c"
+    server_scene_id = ""
     server_running = True
     
     # thread tools
@@ -483,30 +489,59 @@ class RenderThread(QThread):
         self.agentthread.set_pcd_labels(self.pcd_labels)
         
     def upload_floder(self):
-        self.rendering_mode = Rendering_mode.NONE
-        url = self.local2server_url + "/upload"
-        temp_folder = os.path.join(self.project_folder, "temp")
+        self.upload_thread = QThread()
+        self.upload_worker = UploadWorker(
+            self.project_folder,
+            self.local2server_url
+        )
+        self.upload_worker.moveToThread(self.upload_thread)
+        self.upload_thread.started.connect(self.upload_worker.run)
+        self.upload_worker.progress.connect(self.upload_progress.emit)
+        self.upload_worker.finished.connect(self._upload_finished)
+        self.upload_worker.canceled.connect(self._upload_canceled)
+        self.upload_thread.start()
         
-        files_to_upload = []
-        for root, dirs, files in os.walk(temp_folder):
-            for file in files:
-                full_path = os.path.join(root, file)
-                rel_path = os.path.relpath(full_path, temp_folder) # use relative path for upload
-                files_to_upload.append(
-                ("files", (rel_path.replace("\\","/"), open(full_path, "rb")))
-                )
-        
-        r = requests.post(url, files=files_to_upload)
-        self.server_scene_id = r.json()["id"]
-        self.rendering_mode = Rendering_mode.PCD
+    def _upload_canceled(self):
+        self.upload_canceled.emit()
+        self.upload_thread.quit()
+        self.upload_thread.deleteLater()
+    
+    def upload_cancel(self):
+        self.upload_worker.stop()
+    
+    def _upload_finished(self, scene_id):
+        self.server_scene_id = scene_id
+        self.upload_finished.emit()
+        self.upload_thread.quit()
+        self.upload_thread.deleteLater()
         
     def scene_train(self):
         url = self.local2server_url + "/train"
         params = {
             "object_id": self.server_scene_id
         }
-        r = requests.post(url, params=params)
-        print(r.json()["status"])
+        self.train_monitor_thread = QThread()
+        self.train_monitor = TrainMonitorWorker(self.local2server_url, params)
+        self.train_monitor.moveToThread(self.train_monitor_thread)
+        self.train_monitor_thread.started.connect(self.train_monitor.run)
+        self.train_monitor.progress.connect(self.train_progress.emit)
+        self.train_monitor.finished.connect(self._train_finished)
+        self.train_monitor.canceled.connect(self._train_canceled)
+        self.train_monitor_thread.start()
+        requests.post(url, params=params) # send training signal
+        
+    def _train_canceled(self):
+        self.train_canceled.emit()
+        self.train_monitor_thread.quit()
+        self.train_monitor_thread.deleteLater()
+        
+    def _train_finished(self):
+        self.train_finished.emit()
+        self.train_monitor_thread.quit()
+        self.train_monitor_thread.deleteLater()
+        
+    def train_cancel(self):
+        self.train_monitor.stop()
         
     def start_new_response(self):
         self.start_new_signal.emit()
@@ -558,3 +593,72 @@ class SFMWorker(QObject):
     def stop(self):
         self._is_running = False
         self.reconstructor.running = False
+        
+class UploadWorker(QObject):
+    progress = pyqtSignal(int)
+    finished = pyqtSignal(str)
+    canceled = pyqtSignal()
+    
+    def __init__(self, project_folder, url):
+        super().__init__()
+        self.project_folder = project_folder
+        self.url = url
+        self._running = True
+    
+    def run(self):
+        temp_folder = os.path.join(self.project_folder, "temp")
+        file_list = []
+        for root, _, files in os.walk(temp_folder):
+            for file in files:
+                full = os.path.join(root, file)
+                file_list.append(full)
+        total = len(file_list)
+        files_to_upload = []
+        for i, full_path in enumerate(file_list):
+            if not self._running:
+                self.canceled.emit()
+                return
+            rel = os.path.relpath(full_path, temp_folder)
+            files_to_upload.append(
+                ("files", (rel.replace("\\","/"), open(full_path,"rb")))
+            )
+            percent = int((i+1)/total*50)
+            self.progress.emit(percent)
+        r = requests.post(self.url + "/upload", files=files_to_upload)
+        scene_id = r.json()["id"]
+        self.progress.emit(100)
+        self.finished.emit(scene_id)
+    
+    def stop(self):
+        self._running = False
+        
+class TrainMonitorWorker(QObject):
+    progress = pyqtSignal(int)
+    finished = pyqtSignal()
+    canceled = pyqtSignal()
+    
+    def __init__(self, url, params):
+        super().__init__()
+        self.url = url
+        self.params = params
+        self._running = True
+        
+    def run(self):
+        while 1:
+            if not self._running:
+                self.canceled.emit()
+                return
+            r = requests.get(self.url + "/steps", params=self.params)
+            data = r.json()
+            step = data["step"]
+            total = 30000
+            progress = int(step / total * 100)
+            self.progress.emit(progress)
+            if step >= total:
+                self.finished.emit()
+                break
+            time.sleep(1)
+        
+    def stop(self):
+        r = requests.post(self.url + "/stop", params=self.params)
+        self._running = False

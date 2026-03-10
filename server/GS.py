@@ -102,7 +102,7 @@ class PipelineParams():
         self.debug = False
         self.antialiasing = False
 
-def train(input_path, output_path):
+def train(input_path, output_path, step_callback=None):
     first_iter = 0
     gaussians = GaussianModel(3, "default")
     dataset = ModelParams(input_path, output_path)
@@ -124,6 +124,12 @@ def train(input_path, output_path):
     first_iter += 1
     
     for iteration in range(first_iter, opt.iterations + 1):
+        if step_callback is not None:
+            training = step_callback(iteration)
+            if not training:
+                return gaussians, pp, background
+        else:
+            return gaussians, pp, background
         gaussians.update_learning_rate(iteration)
         
         if iteration % 1000 == 0:
