@@ -29,14 +29,14 @@ class MessageBubble(QWidget):
                 border-radius: 8px;
                 """
             )
-            layout.addStretch()
+            layout.addStretch(0.1)
             layout.addWidget(self.label)
             layout.addWidget(avatar, alignment=Qt.AlignTop)
         else:
             self.label.setStyleSheet(
                 """
                 background:white;
-                padding:8px;
+                padding: 8px;
                 border-radius:8px;
                 """
             )

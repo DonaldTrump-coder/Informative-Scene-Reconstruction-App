@@ -17,11 +17,15 @@ class LLM:
             stream=True
         )
         
+        first_token = True
         for chunk in response:
             if not chunk.choices:
                 continue
             token = chunk.choices[0].delta.content
             if token:
+                if first_token:
+                    token = token.lstrip("\n")
+                first_token = False
                 yield token
         
 if __name__ == "__main__":

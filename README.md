@@ -1,3 +1,5 @@
+# Informative Scene-Reconstruction App
+
 conda create -n scenereconstruction python=3.9
 conda activate scenereconstruction
 

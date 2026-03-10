@@ -413,7 +413,7 @@ class MainWindow(QMainWindow):
         self.renderthread.glwidget_height = self.current_gl.height()
         return super().resizeEvent(event)
     
-    def start_server_training(self):
+    def start_server_training(self): # upload files
         self.uploaded = False
         self.upload_progressdialog = SfM_ProgressDialog(
             "上传中...",
@@ -433,8 +433,9 @@ class MainWindow(QMainWindow):
         )
         self.renderthread.upload_canceled.connect(self.upload_progressdialog.close)
         self.upload_progressdialog.show()
-        self.renderthread.upload_floder()
+        self.renderthread.upload_folder()
         
+    def training(self): # start training
         if self.uploaded:
             self.training_progressdialog = SfM_ProgressDialog(
                 "正在训练...",
@@ -481,7 +482,7 @@ class MainWindow(QMainWindow):
         self.uploaded = True
         if self.upload_progressdialog:
             self.upload_progressdialog.close()
-            self.upload_progressdialog.deleteLater()
+        self.training()
         
     def start_sfm(self):
         self.sfm_progressdialog = SfM_ProgressDialog("Running SfM...", "Cancel", 0, 100, self)

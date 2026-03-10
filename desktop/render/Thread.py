@@ -1,4 +1,4 @@
-from PyQt5.QtCore import QThread, pyqtSignal, QMutex, QWaitCondition, QObject
+from PyQt5.QtCore import QThread, pyqtSignal, QMutex, QWaitCondition, QObject, QTimer
 import numpy as np
 from desktop.render.rendermode import Rendering_mode, Status_mode
 from desktop.render.cameras import get_init_camera
@@ -272,7 +272,7 @@ class RenderThread(QThread):
             W = self.W
             
             self.mutex.unlock()
-            if not R or not T or not K:
+            if R is None or T is None or K is None:
                 continue
             
             # rendering cores:
@@ -488,7 +488,7 @@ class RenderThread(QThread):
         self.pcd_labels.append(PCD_label(name, description, (xmin, ymin, zmin, xmax, ymax, zmax)))
         self.agentthread.set_pcd_labels(self.pcd_labels)
         
-    def upload_floder(self):
+    def upload_folder(self):
         self.upload_thread = QThread()
         self.upload_worker = UploadWorker(
             self.project_folder,
@@ -504,7 +504,6 @@ class RenderThread(QThread):
     def _upload_canceled(self):
         self.upload_canceled.emit()
         self.upload_thread.quit()
-        self.upload_thread.deleteLater()
     
     def upload_cancel(self):
         self.upload_worker.stop()
@@ -513,32 +512,37 @@ class RenderThread(QThread):
         self.server_scene_id = scene_id
         self.upload_finished.emit()
         self.upload_thread.quit()
-        self.upload_thread.deleteLater()
         
     def scene_train(self):
-        url = self.local2server_url + "/train"
-        params = {
-            "object_id": self.server_scene_id
-        }
-        self.train_monitor_thread = QThread()
-        self.train_monitor = TrainMonitorWorker(self.local2server_url, params)
-        self.train_monitor.moveToThread(self.train_monitor_thread)
-        self.train_monitor_thread.started.connect(self.train_monitor.run)
-        self.train_monitor.progress.connect(self.train_progress.emit)
-        self.train_monitor.finished.connect(self._train_finished)
-        self.train_monitor.canceled.connect(self._train_canceled)
-        self.train_monitor_thread.start()
-        requests.post(url, params=params) # send training signal
+        def check_ws_and_train():
+            if self.ws.ws is not None:
+                timer.stop()
+            url = self.local2server_url + "/train"
+            params = {
+                "object_id": self.server_scene_id
+            }
+            self.train_monitor_thread = QThread()
+            self.train_monitor = TrainMonitorWorker(self.local2server_url, params)
+            self.train_monitor.moveToThread(self.train_monitor_thread)
+            self.train_monitor_thread.started.connect(self.train_monitor.run)
+            self.train_monitor.progress.connect(self.train_progress.emit)
+            self.train_monitor.finished.connect(self._train_finished)
+            self.train_monitor.canceled.connect(self._train_canceled)
+            self.train_monitor_thread.start()
+            requests.post(url, params=params) # send training signal
+
+        timer = QTimer()
+        timer.setInterval(500)
+        timer.timeout.connect(check_ws_and_train)
+        timer.start()
         
     def _train_canceled(self):
         self.train_canceled.emit()
         self.train_monitor_thread.quit()
-        self.train_monitor_thread.deleteLater()
         
     def _train_finished(self):
         self.train_finished.emit()
         self.train_monitor_thread.quit()
-        self.train_monitor_thread.deleteLater()
         
     def train_cancel(self):
         self.train_monitor.stop()

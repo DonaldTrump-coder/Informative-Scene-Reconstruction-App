@@ -101,40 +101,6 @@ async def train_scene(object_id: str, background_tasks: BackgroundTasks):
 def run_training(obj: SceneObject):
     with obj.training_lock:
         obj.train()
-
-@app.post("/render")
-async def render_scene(cam: CameraParam = Body(...)):
-    obj_id = cam.object_id
-    if obj_id not in scene_objects:
-        scene_object = SceneObject()
-        scene_object.object_id = obj_id
-        scene_object.folder = os.path.join(BASE_STORAGE, obj_id)
-        scene_objects[obj_id] = scene_object
-    obj = scene_objects[obj_id]
-    if obj.gaussians is None:
-        obj.import_gs(os.path.join(OUTPUT, obj.object_id))
-    K = np.array(cam.K, dtype=np.float32)
-    R = np.array(cam.R, dtype=np.float32)
-    t = np.array(cam.t, dtype=np.float32)
-    H = cam.H
-    W = cam.W
-    
-    with obj.render_lock:
-        img = obj.render(K, R, t, H, W)
-    
-    if isinstance(img, torch.Tensor):
-        img = img.detach().cpu().numpy()
-    img = np.ascontiguousarray(img)
-    img = (img * 255).astype(np.uint8)
-    
-    return StreamingResponse(
-        BytesIO(img.tobytes()),
-        media_type="application/octet-stream",
-        headers={
-            "X-Shape": f"{img.shape[0]},{img.shape[1]},{img.shape[2]}",
-            "X-Dtype": str(img.dtype)
-        }
-    )
     
 @app.websocket("/ws/render")
 async def render_scene_ws(websocket: WebSocket):
