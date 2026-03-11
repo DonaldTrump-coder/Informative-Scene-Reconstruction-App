@@ -1,4 +1,4 @@
-from PyQt5.QtWidgets import QProgressDialog, QPushButton
+from PyQt5.QtWidgets import QProgressDialog, QPushButton, QDialog, QVBoxLayout, QLabel
 from PyQt5.QtCore import Qt, pyqtSignal
 
 class SfM_ProgressDialog(QProgressDialog):
@@ -16,3 +16,23 @@ class SfM_ProgressDialog(QProgressDialog):
     
     def cancel(self):
         self.cancelClicked.emit()
+        
+class Message_Dialog(QDialog):
+    def __init__(self, text="", parent=None):
+        super().__init__(parent)
+
+        self.setWindowFlags(
+            Qt.Dialog |
+            Qt.CustomizeWindowHint
+        )
+
+        layout = QVBoxLayout(self)
+        self.label = QLabel(text)
+        self.label.setAlignment(Qt.AlignCenter)
+        self.label.setWordWrap(True)
+        layout.addWidget(self.label)
+        self.setLayout(layout)
+        self.resize(300, 100)
+
+    def setText(self, text):
+        self.label.setText(text)

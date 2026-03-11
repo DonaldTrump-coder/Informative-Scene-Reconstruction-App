@@ -3,7 +3,7 @@ from PyQt5.QtCore import Qt, QEvent, QTimer, QSize, QRect, QPoint, pyqtSignal
 from PyQt5.QtGui import QIcon
 from desktop.ui.GLUI import GLWidget
 from desktop.ui.labelUI import LabelUI
-from desktop.ui.ProgressDialog import SfM_ProgressDialog
+from desktop.ui.ProgressDialog import SfM_ProgressDialog, Message_Dialog
 from desktop.render.Thread import RenderThread
 import os
 from desktop.render.rendermode import Status_mode
@@ -13,7 +13,7 @@ from desktop.ui.MessageBubble import MessageBubble
 class MainWindow(QMainWindow):
     def __init__(self, url):
         super().__init__()
-        self.setWindowTitle("LLM Scene Viewer V0.0.1")
+        self.setWindowTitle("LLM Scene Reconstructor V0.0.1")
         self.setWindowIcon(QIcon("resources/app.png"))
         self.resize(800, 600)
         self.renderthread = RenderThread()
@@ -28,7 +28,7 @@ class MainWindow(QMainWindow):
         self.page2 = self.create_page_layout(2)
         self.page3 = self.create_page_layout(3)
         self.tab_widget.addTab(self.page1, "图像输入")
-        self.tab_widget.addTab(self.page2, "点云标注查看")
+        self.tab_widget.addTab(self.page2, "点云标注")
         self.tab_widget.addTab(self.page3, "实景生成")
         self.tab_widget.currentChanged.connect(self.on_tab_changed)
         
@@ -83,14 +83,14 @@ class MainWindow(QMainWindow):
             Button_widget = QWidget()
             left_layout.addWidget(Button_widget)
             button_layout = QHBoxLayout(Button_widget)
-            button1 = QPushButton("点云重建")
+            button1 = QPushButton("稀疏重建")
             button_layout.addWidget(button1)
             icon1 = QIcon("resources/play.png")
             button1.setIcon(icon1)
             button1.clicked.connect(self.start_sfm)
             splitter.addWidget(left_container)
         elif page == 2:
-            button1 = QPushButton("生成3DGS场景")
+            button1 = QPushButton("生成实景")
             left_layout.addWidget(button1)
             icon1 = QIcon("resources/play-button.png")
             button1.setIcon(icon1)
@@ -103,10 +103,10 @@ class MainWindow(QMainWindow):
             tool_layout = QVBoxLayout(self.toolpanel)
             tool_layout.setContentsMargins(4,4,4,4)
             tool_layout.setSpacing(6)
-            tool_layout.addStretch()
             self.add_tool("resources/select.png", "选择", self.selection_status, True, tool_layout)
             self.add_tool("resources/unselect.png", "取消选择", self.unselection_status, True, tool_layout)
             self.add_tool("resources/label.png", "标注", self.get_label, False, tool_layout)
+            tool_layout.addStretch()
             
             splitter.addWidget(self.toolpanel)
 
@@ -194,6 +194,7 @@ class MainWindow(QMainWindow):
             self.current_page = self.page3
             self.renderthread.frame_ready.connect(self.current_gl.set_image)
             self.renderthread.agentthread.llm_using = True
+        QTimer.singleShot(100, self.current_gl.clear)
 
     def init_menu(self):
         menubar=self.menuBar()
@@ -238,6 +239,11 @@ class MainWindow(QMainWindow):
         self.renderthread.set_3DGS_RGB()
         
     def set_pcd(self):
+        self.pcd_loader_dialog = Message_Dialog("正在加载点云...", self)
+        self.pcd_loader_dialog.setWindowTitle("加载点云")
+        self.pcd_loader_dialog.setWindowModality(Qt.WindowModality.ApplicationModal)
+        self.renderthread.pcd_loading_started.connect(self.pcd_loader_dialog.show)
+        self.renderthread.pcd_loading_finished.connect(self.pcd_loader_dialog.close)
         self.renderthread.set_pcd()
         
     def closeEvent(self, event):

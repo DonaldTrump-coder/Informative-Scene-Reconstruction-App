@@ -17,7 +17,7 @@ class MessageBubble(QWidget):
         self.label.setWordWrap(True)
         self.label.setMaximumWidth(200)
         self.label.setSizePolicy(
-            QSizePolicy.Preferred,
+            QSizePolicy.Expanding,
             QSizePolicy.Preferred
         )
         

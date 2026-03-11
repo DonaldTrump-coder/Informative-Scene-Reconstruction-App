@@ -62,3 +62,7 @@ class GLWidget(QOpenGLWidget):
     def mousePressEvent(self, event):
         self.main_window.setFocus()
         super().mousePressEvent(event)
+        
+    def clear(self):
+        self.image = None
+        self.update()

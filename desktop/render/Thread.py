@@ -34,6 +34,8 @@ class RenderThread(QThread):
     train_progress = pyqtSignal(int)
     train_finished = pyqtSignal()
     train_canceled = pyqtSignal()
+    pcd_loading_started = pyqtSignal()
+    pcd_loading_finished = pyqtSignal()
     parser = None
     camera = None
     R = None # [3x3]
@@ -118,14 +120,21 @@ class RenderThread(QThread):
             if self.sparse_folder is None:
                 QMessageBox.warning(None, "Warning", "当前未设置项目！")
                 return
-            self.pcd = PCD(
-                os.path.join(self.sparse_folder, "0", "cameras.bin"),
-                os.path.join(self.sparse_folder, "0", "images.bin"),
-                os.path.join(self.sparse_folder, "0", "points3D.bin")
-                )
-            self.R, self.T = self.pcd.get_extrinsics_init()
-            self.pcd.set_camera(self.R, self.T, self.H, self.W, self.K)
-            self.rendering_mode = Rendering_mode.PCD
+            self.pcd_loading_started.emit()
+            self.pcd_loading_thread = QThread()
+            self.pcd_loader = PCD_Loader(self.sparse_folder, self.H, self.W, self.K)
+            self.pcd_loader.moveToThread(self.pcd_loading_thread)
+            self.pcd_loading_thread.started.connect(self.pcd_loader.run)
+            self.pcd_loader.finished.connect(self.on_pcd_loaded)
+            self.pcd_loader.finished.connect(self.pcd_loading_thread.quit)
+            self.pcd_loading_thread.start()
+    
+    def on_pcd_loaded(self, pcd, R, T):
+        self.pcd = pcd
+        self.R = R
+        self.T = T
+        self.rendering_mode = Rendering_mode.PCD
+        self.pcd_loading_finished.emit()
 
     def get_images(self):
         supported_extensions = ['.png', '.jpg', '.jpeg', '.bmp', '.gif', '.tiff', '.ppm']
@@ -666,3 +675,23 @@ class TrainMonitorWorker(QObject):
     def stop(self):
         r = requests.post(self.url + "/stop", params=self.params)
         self._running = False
+        
+class PCD_Loader(QObject):
+    finished = pyqtSignal(object, object, object)  # pcd, R, T
+    
+    def __init__(self, sparse_folder, H, W, K):
+        super().__init__()
+        self.sparse_folder = sparse_folder
+        self.H = H
+        self.W = W
+        self.K = K
+        
+    def run(self):
+        pcd = PCD(
+                    os.path.join(self.sparse_folder, "0", "cameras.bin"),
+                    os.path.join(self.sparse_folder, "0", "images.bin"),
+                    os.path.join(self.sparse_folder, "0", "points3D.bin")
+                )
+        R, T = pcd.get_extrinsics_init()
+        pcd.set_camera(R, T, self.H, self.W, self.K)
+        self.finished.emit(pcd, R, T)
