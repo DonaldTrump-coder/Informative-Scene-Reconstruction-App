@@ -180,6 +180,9 @@ class MainWindow(QMainWindow):
             self.current_page = self.page1
             self.renderthread.frame_ready.connect(self.current_gl.set_image)
             self.renderthread.agentthread.llm_using = False
+            self.choose_action.setEnabled(False)
+            self.unchoose_action.setEnabled(False)
+            self.label_action.setEnabled(False)
         elif index == 1:
             self.set_pcd()
             self.current_gl = getattr(self.page2, 'gl_widget', None)
@@ -187,6 +190,9 @@ class MainWindow(QMainWindow):
             self.current_page = self.page2
             self.renderthread.frame_ready.connect(self.current_gl.set_image)
             self.renderthread.agentthread.llm_using = False
+            self.choose_action.setEnabled(True)
+            self.unchoose_action.setEnabled(True)
+            self.label_action.setEnabled(True)
         elif index == 2:
             self.set_3DGS_RGB()
             self.current_gl = getattr(self.page3, 'gl_widget', None)
@@ -194,11 +200,16 @@ class MainWindow(QMainWindow):
             self.current_page = self.page3
             self.renderthread.frame_ready.connect(self.current_gl.set_image)
             self.renderthread.agentthread.llm_using = True
+            self.choose_action.setEnabled(False)
+            self.unchoose_action.setEnabled(False)
+            self.label_action.setEnabled(False)
         QTimer.singleShot(100, self.current_gl.clear)
 
     def init_menu(self):
         menubar=self.menuBar()
         file_menu=menubar.addMenu("文件")
+        option_menu = menubar.addMenu("选项")
+        pcd_menu = menubar.addMenu("点云")
 
         project_action = QAction("创建项目", self)
         open_project_action = QAction("打开项目", self)
@@ -209,6 +220,35 @@ class MainWindow(QMainWindow):
         file_menu.addAction(open_action)
         file_menu.addAction(project_action)
         file_menu.addAction(open_project_action)
+        
+        self.choose_action = QAction("选择", self)
+        self.unchoose_action = QAction("取消选择", self)
+        self.label_action = QAction("标注", self)
+        self.choose_action.triggered.connect(self.tool_buttons[0].click)
+        self.unchoose_action.triggered.connect(self.tool_buttons[1].click)
+        self.label_action.triggered.connect(self.tool_buttons[2].click)
+        pcd_menu.addAction(self.choose_action)
+        pcd_menu.addAction(self.unchoose_action)
+        pcd_menu.addAction(self.label_action)
+        
+        language_menu = option_menu.addMenu("语言")
+        lang_group = QActionGroup(self)
+        lang_group.setExclusive(True)
+        action_cn = QAction("中文", self, checkable=True, checked=True)
+        action_en = QAction("English", self, checkable=True)
+        language_menu.addAction(action_cn)
+        language_menu.addAction(action_en)
+        lang_group.addAction(action_cn)
+        lang_group.addAction(action_en)
+        action_cn.triggered.connect(lambda: self.change_language("zh"))
+        action_en.triggered.connect(lambda: self.change_language("en"))
+        
+        self.choose_action.setEnabled(False)
+        self.unchoose_action.setEnabled(False)
+        self.label_action.setEnabled(False)
+        
+    def change_language(self, language):
+        print(f"change language to {language}")
 
     def Open_images(self):
         folder_path = QFileDialog.getExistingDirectory(self, "Select Folder")
@@ -438,6 +478,7 @@ class MainWindow(QMainWindow):
             self.on_upload_finished
         )
         self.renderthread.upload_canceled.connect(self.upload_progressdialog.close)
+        self.renderthread.uploaded.connect(self.on_uploaded)
         self.upload_progressdialog.show()
         self.renderthread.upload_folder()
         
@@ -489,6 +530,12 @@ class MainWindow(QMainWindow):
         if self.upload_progressdialog:
             self.upload_progressdialog.close()
         self.training()
+        
+    def on_uploaded(self):
+        btn = self.upload_progressdialog.findChild(QPushButton)
+        if btn:
+            btn.setEnabled(False)
+        QApplication.processEvents()
         
     def start_sfm(self):
         self.sfm_progressdialog = SfM_ProgressDialog("Running SfM...", "Cancel", 0, 100, self)

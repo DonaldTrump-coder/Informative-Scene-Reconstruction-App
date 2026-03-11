@@ -31,6 +31,7 @@ class RenderThread(QThread):
     upload_progress = pyqtSignal(int)
     upload_finished = pyqtSignal()
     upload_canceled = pyqtSignal()
+    uploaded = pyqtSignal() # Uploaded to server but not finished
     train_progress = pyqtSignal(int)
     train_finished = pyqtSignal()
     train_canceled = pyqtSignal()
@@ -69,7 +70,7 @@ class RenderThread(QThread):
     
     local2server_url = ""
     rendering_url = ""
-    server_scene_id = ""
+    server_scene_id = "e13c7c38-a429-472c-bbce-29af24fb916c"
     server_running = True
     
     # thread tools
@@ -508,6 +509,7 @@ class RenderThread(QThread):
         self.upload_worker.progress.connect(self.upload_progress.emit)
         self.upload_worker.finished.connect(self._upload_finished)
         self.upload_worker.canceled.connect(self._upload_canceled)
+        self.upload_worker.uploaded.connect(self.uploaded.emit)
         self.upload_thread.start()
         
     def _upload_canceled(self):
@@ -611,6 +613,7 @@ class UploadWorker(QObject):
     progress = pyqtSignal(int)
     finished = pyqtSignal(str)
     canceled = pyqtSignal()
+    uploaded = pyqtSignal()
     
     def __init__(self, project_folder, url):
         super().__init__()
@@ -635,8 +638,9 @@ class UploadWorker(QObject):
             files_to_upload.append(
                 ("files", (rel.replace("\\","/"), open(full_path,"rb")))
             )
-            percent = int((i+1)/total*50)
+            percent = int((i+1)/total*100)
             self.progress.emit(percent)
+        self.uploaded.emit()
         r = requests.post(self.url + "/upload", files=files_to_upload)
         scene_id = r.json()["id"]
         self.progress.emit(100)

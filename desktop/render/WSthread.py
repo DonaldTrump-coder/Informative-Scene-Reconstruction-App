@@ -23,7 +23,13 @@ class WSThread:
     def connect_ws(self):
         while self.running:
             try:
-                self.ws = websocket.create_connection(self.url, ping_interval=20)
+                with self.ws_lock:
+                    if self.ws:
+                        try:
+                            self.ws.close()
+                        except:
+                            pass
+                    self.ws = websocket.create_connection(self.url, ping_interval=20)
                 print("WebSocket connected")
                 return
             except Exception as e:
@@ -35,8 +41,8 @@ class WSThread:
             try:
                 payload = self.send_queue.get(timeout=1)
                 with self.ws_lock:
-                    if self.ws:
-                        self.ws.send(json.dumps(payload))
+                    ws = self.ws
+                ws.send(json.dumps(payload))
             except queue.Empty:
                 continue
             except websocket.WebSocketConnectionClosedException:
@@ -50,10 +56,11 @@ class WSThread:
         while self.running:
             try:
                 with self.ws_lock:
-                    if not self.ws:
-                        time.sleep(1)
-                        continue
-                    data = self.ws.recv()
+                    ws = self.ws
+                if not ws:
+                    time.sleep(1)
+                    continue
+                data = ws.recv()
                 if isinstance(data, bytes):
                     while self.recv_queue.qsize() >= 5:
                         try:
@@ -88,4 +95,6 @@ class WSThread:
 
     def close(self):
         self.running = False
-        self.ws.close()
+        with self.ws_lock:
+            if self.ws:
+                self.ws.close()
