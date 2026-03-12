@@ -1,7 +1,16 @@
 # Informative Scene-Reconstruction App
 
+## 💻 Deployment
+### Environments
+**Local:**
+```
 conda create -n scenereconstruction python=3.9
 conda activate scenereconstruction
+```
+<br>
+
+**Server:**
+
 
 Desktop:
 CUDA=12.4
