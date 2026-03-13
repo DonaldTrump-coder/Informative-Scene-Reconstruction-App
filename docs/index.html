@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="description"
+        content="Fast Overviews Generator for Large Satellite Images using C++.">
+  <meta name="keywords" content="Satellite, Fast-Overview">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>FastViewGener: Fast Overviews Generator for Large Satellite Images</title>
+
+  <!-- Global site tag (gtag.js) - Google Analytics -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-PYVRSFMDRL"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+
+    function gtag() {
+      dataLayer.push(arguments);
+    }
+
+    gtag('js', new Date());
+
+    gtag('config', 'G-PYVRSFMDRL');
+  </script>
+
+  <link href="https://fonts.googleapis.com/css?family=Google+Sans|Noto+Sans|Castoro"
+        rel="stylesheet">
+
+  <link rel="stylesheet" href="./static/css/bulma.min.css">
+  <link rel="stylesheet" href="./static/css/bulma-carousel.min.css">
+  <link rel="stylesheet" href="./static/css/bulma-slider.min.css">
+  <link rel="stylesheet" href="./static/css/fontawesome.all.min.css">
+  <link rel="stylesheet"
+        href="https://cdn.jsdelivr.net/gh/jpswalsh/academicons@1/css/academicons.min.css">
+  <link rel="stylesheet" href="./static/css/index.css">
+  <link rel="icon" href="./static/images/remote-sensing-satellite.png">
+
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+  <script defer src="./static/js/fontawesome.all.min.js"></script>
+  <script src="./static/js/bulma-carousel.min.js"></script>
+  <script src="./static/js/bulma-slider.min.js"></script>
+  <script src="./static/js/index.js"></script>
+</head>
+<body>
+
+<nav class="navbar" role="navigation" aria-label="main navigation">
+  <div class="navbar-brand">
+    <a role="button" class="navbar-burger" aria-label="menu" aria-expanded="false">
+      <span aria-hidden="true"></span>
+      <span aria-hidden="true"></span>
+      <span aria-hidden="true"></span>
+    </a>
+  </div>
+  <div class="navbar-menu">
+    <div class="navbar-start" style="flex-grow: 1; justify-content: center;">
+      <a class="navbar-item" href="https://donaldtrump-coder.github.io/" target="_blank">
+      <span class="icon">
+          <i class="fas fa-home"></i>
+      </span>
+      </a>
+
+      <div class="navbar-item has-dropdown is-hoverable">
+        <a class="navbar-link">
+          More Work
+        </a>
+        <div class="navbar-dropdown">
+          <a class="navbar-item" href="https://donaldtrump-coder.github.io/mapswithdrone/index.html" target="_blank">
+            Atlas of LEI
+          </a>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</nav>
+
+
+<section class="hero">
+  <div class="hero-body">
+    <div class="container is-max-desktop">
+      <div class="columns is-centered">
+        <div class="column has-text-centered">
+          <h1 class="title is-1 publication-title"><img src="static/images/remote-sensing-satellite.png" style="height: 0.7em; vertical-align: middle;"/>FastViewGener: Fast Overviews Generator for Large Satellite Images</h1>
+          <div class="is-size-5 publication-authors">
+            <strong>Contributor: </strong>
+            <span class="author-block">
+              <a href="https://donaldtrump-coder.github.io/" target="_blank">
+                Haojun Tang
+            </a>,
+            </span>
+            <span class="author-block">
+              <a href="https://github.com/neil666-com" target="_blank">
+               Yuyang Wu
+            </a>,
+            </span>
+            <span class="author-block">
+              <a href="https://github.com/Jeiluo" target="_blank">Jiahao Zhou</a>,
+            </span>
+            <span class="author-block">
+              <a href="https://faculty.csu.edu.cn/panhongbo/zh_CN/index.htm" target="_blank">Hongbo Pan</a>
+            </span>
+          </div>
+
+          <div class="is-size-5 publication-authors">
+            Thanks to <strong>Sponsor: </strong>
+            <span class="author-block">
+                <a href="https://faculty.csu.edu.cn/panhongbo/zh_CN/index.htm" target="_blank">Hongbo Pan</a>
+            </span>
+          </div>
+
+          <div class="is-size-5 publication-authors">
+            <span class="author-block">
+                <a href="https://en.csu.edu.cn/" target="_blank">
+                    Central South University
+                </a>
+            </span>
+          </div>
+
+          <div class="column has-text-centered">
+            <div class="publication-links">
+              <!-- Code Link. -->
+              <span class="link-block">
+                <a href="https://github.com/DonaldTrump-coder/FastViewGen"
+                   class="external-link button is-normal is-rounded is-dark" target="_blank">
+                  <span class="icon">
+                      <i class="fab fa-github"></i>
+                  </span>
+                  <span>Code</span>
+                  </a>
+              </span>
+              <!-- Dataset Link. -->
+              <span class="link-block">
+                <a href="https://www.modelscope.cn/datasets/Donald123456/LargeSatelliteImgs"
+                   class="external-link button is-normal is-rounded is-dark" target="_blank">
+                  <span class="icon">
+                      <img src="static/images/server.png" alt="Icon" style="width: 80%; filter: invert(1);">
+                  </span>
+                  <span>Data</span>
+                  </a>
+                </span>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="hero teaser">
+  <div class="container is-max-desktop">
+    <div class="columns is-centered has-text-centered">
+        <h2 class="title is-3">Results</h2>
+    </div>
+    <div class="column is-full-width">
+        <h3 class="title is-4">Fast Overview Results</h3>
+    </div>
+    <br>
+    <div class="container is-max-desktop">
+    <table style="table-layout: fixed;" id="Result1">
+    <thead>
+        <tr>
+        <th verticalalign="middle" align="center" style="width: 15%;" >Stretch Methods</th>
+        <th valign="middle" align="center" style="width: 14%">Linear</th>
+        <th valign="middle" align="center" style="width: 14%">Log</th>
+        <th valign="middle" align="center" style="width: 14%">Gamma</th>
+        <th valign="middle" align="center" style="width: 14%">Tile Stretch</th>
+        <th valign="middle" align="center" style="width: 14%">Piecewise Equal</th>
+        <th valign="middle" align="center" style="width: 14%">Histogram Equal</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+        <td valign="middle" align="center">Sat1</td>
+        <td valign="middle" align="center"><img src="static/images/Sat1_linear.png" width="98%"></td>
+        <td valign="middle" align="center" ><img src="static/images/Sat1_log.png" width="98%"></td>
+        <td valign="middle" align="center"><img src="static/images/Sat1_gamma.png" width="98%"></td>
+        <td valign="middle" align="center"><img src="static/images/Sat1_tile_stretch.png" width="98%"></td>
+        <td valign="middle" align="center"><img src="static/images/Sat1_piecewise_equal.png" width="98%"></td>
+        <td valign="middle" align="center"><img src="static/images/Sat1_histo_equal.png" width="98%"></td>
+        </tr>
+        <tr>
+        <td align="center">Sat2</td>
+        <td align="center"><img src="static/images/Sat2_linear.png" width="98%"></td>
+        <td align="center"><img src="static/images/Sat2_log.png" width="98%"></td>
+        <td align="center"><img src="static/images/Sat2_gamma.png" width="98%"></td>
+        <td align="center"><img src="static/images/Sat2_tile_stretch.png" width="98%"></td>
+        <td align="center"><img src="static/images/Sat2_piecewise_equal.png" width="98%"></td>
+        <td align="center"><img src="static/images/Sat2_histo_equal.png" width="98%"></td>
+        </tr>
+        <tr>
+        <td align="center">Sat3</td>
+        <td align="center"><img src="static/images/Sat3_linear.png" width="98%"></td>
+        <td align="center"><img src="static/images/Sat3_log.png" width="98%"></td>
+        <td align="center"><img src="static/images/Sat3_gamma.png" width="98%"></td>
+        <td align="center"><img src="static/images/Sat3_tile_stretch.png" width="98%"></td>
+        <td align="center"><img src="static/images/Sat3_piecewise_equal.png" width="98%"></td>
+        <td align="center"><img src="static/images/Sat3_histo_equal.png" width="98%"></td>
+        </tr>
+        <tr>
+        <td align="center">Sat4</td>
+        <td align="center"><img src="static/images/Sat4_linear.png" width="98%"></td>
+        <td align="center"><img src="static/images/Sat4_log.png" width="98%"></td>
+        <td align="center"><img src="static/images/Sat4_gamma.png" width="98%"></td>
+        <td align="center"><img src="static/images/Sat4_tile_stretch.png" width="98%"></td>
+        <td align="center"><img src="static/images/Sat4_piecewise_equal.png" width="98%"></td>
+        <td align="center"><img src="static/images/Sat4_histo_equal.png" width="98%"></td>
+        </tr>
+        <tr>
+        <td align="center">Sat5</td>
+        <td align="center"><img src="static/images/Sat5_linear.png" width="98%"></td>
+        <td align="center"><img src="static/images/Sat5_log.png" width="98%"></td>
+        <td align="center"><img src="static/images/Sat5_gamma.png" width="98%"></td>
+        <td align="center"><img src="static/images/Sat5_tile_stretch.png" width="98%"></td>
+        <td align="center"><img src="static/images/Sat5_piecewise_equal.png" width="98%"></td>
+        <td align="center"><img src="static/images/Sat5_histo_equal.png" width="98%"></td>
+        </tr>
+        <tr>
+        <td align="center">Sat7</td>
+        <td align="center"><img src="static/images/Sat7_linear.png" width="98%"></td>
+        <td align="center"><img src="static/images/Sat7_log.png" width="98%"></td>
+        <td align="center"><img src="static/images/Sat7_gamma.png" width="98%"></td>
+        <td align="center"><img src="static/images/Sat7_tile_stretch.png" width="98%"></td>
+        <td align="center"><img src="static/images/Sat7_piecewise_equal.png" width="98%"></td>
+        <td align="center"><img src="static/images/Sat7_histo_equal.png" width="98%"></td>
+        </tr>
+    </tbody>
+    </table>
+    </div>
+    <br><br>
+
+    <div class="column is-full-width">
+        <h3 class="title is-4">Cropping Results</h3>
+    </div>
+    <br>
+    <div class="container is-max-desktop">
+    <table style="table-layout: fixed;" id="Result2">
+    <thead>
+        <tr>
+        <th verticalalign="middle" align="center" style="width: 14%;" >Sat1</th>
+        <th valign="middle" align="center" style="width: 14%">Sat2</th>
+        <th valign="middle" align="center" style="width: 14%">Sat3</th>
+        <th valign="middle" align="center" style="width: 14%">Sat4</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+        <td valign="middle" align="center"><img src="static/images/Sat1_cropping.png" width="98%"></td>
+        <td valign="middle" align="center" ><img src="static/images/Sat2_cropping.png" width="98%"></td>
+        <td valign="middle" align="center"><img src="static/images/Sat3_cropping.png" width="98%"></td>
+        <td valign="middle" align="center"><img src="static/images/Sat4_cropping.png" width="98%"></td>
+        </tr>
+    </tbody>
+    </table>
+    </div><br><br>
+
+    <div class="column is-full-width">
+        <h3 class="title is-4">Partitioning Results</h3>
+    </div>
+    <br>
+    <div class="container is-max-desktop">
+    <table style="table-layout: fixed;" id="Result2">
+    <thead>
+        <tr>
+        <th verticalalign="middle" align="center" style="width: 14%;" >Sat1</th>
+        <th valign="middle" align="center" style="width: 14%">Sat2</th>
+        <th valign="middle" align="center" style="width: 14%">Sat4</th>
+        <th valign="middle" align="center" style="width: 14%">Sat5</th>
+        <th valign="middle" align="center" style="width: 14%">Sat7</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+        <td valign="middle" align="center"><img src="static/images/Sat1_partitioner.png" width="98%"></td>
+        <td valign="middle" align="center" ><img src="static/images/Sat2_partitioner.png" width="98%"></td>
+        <td valign="middle" align="center"><img src="static/images/Sat4_partitioner.png" width="98%"></td>
+        <td valign="middle" align="center"><img src="static/images/Sat5_partitioner.png" width="98%"></td>
+        <td valign="middle" align="center"><img src="static/images/Sat7_partitioner.png" width="98%"></td>
+        </tr>
+    </tbody>
+    </table>
+
+
+  </div>
+</section>
+
+<script>
+  window.onload = function() {
+    var rows = document.querySelectorAll('#Result1 tbody tr');
+
+    rows.forEach(function(row) {
+      var images = row.querySelectorAll('img');
+      var maxHeight = 0;
+
+      images.forEach(function(img) {
+        if (img.height > maxHeight) {
+          maxHeight = img.height;
+        }
+      });
+
+      row.style.lineHeight = maxHeight + 'px';
+
+      images.forEach(function(img) {
+        img.style.verticalAlign = 'middle';
+      });
+    });
+  };
+</script>
+
+<section class="section">
+  <div class="container is-max-desktop">
+    <div class="columns is-centered has-text-centered">
+      <div class="column is-four-fifths">
+        <h2 class="title is-3">Method</h2>
+        <div class="content has-text-justified">
+          <p>
+            <figure>
+            <img src="static/images/Overview.png" alt="Overview" style="width: 100%;">
+            <figcaption>Over view of our Pipeline.</figcaption>
+            </figure>
+            The third-party libraries used in this project are: <a href="https://github.com/DonaldTrump-coder/libtiff" target="_blank">libtiff</a>, <a href="https://github.com/nothings/stb" target="_blank">stb</a>, <a href="https://github.com/jbeder/yaml-cpp", target="_blank">yaml-cpp</a>.<br>
+          </p>
+            <figure>
+            <img src="static/images/Classes.png" alt="Classes" style="width: 30%;">
+            <figcaption>Structure of Classes used in this project.</figcaption>
+            </figure>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="BibTeX">
+  <div class="container is-max-desktop content">
+    <h2 class="title">BibTeX</h2>
+    <pre><code>@misc{tang2026fastviewgener,
+  author    = {Haojun Tang and Yuyang Wu and Jiahao Zhou and Hongbo Pan},
+  title     = {FastViewGener: Fast Overviews Generator for Large Satellite Images},
+  year      = {2026},
+  howpublished = {\url{https://github.com/DonaldTrump-coder/FastViewGen}},
+  note = {GitHub repository}
+}</code></pre>
+  </div>
+</section>
+
+<footer class="footer">
+  <div class="container">
+    <div class="content has-text-centered">
+      <a class="icon-link" href="https://github.com/DonaldTrump-coder" class="external-link" disabled>
+        <i class="fab fa-github"></i>
+      </a>
+    </div>
+    <div class="columns is-centered">
+      <div class="column is-8">
+        <div class="content">
+          <p>
+            The template is borrowed from <a href="https://github.com/nerfies/nerfies.github.io" target="_blank">Nerfies</a> under a <a rel="license"
+                                                href="http://creativecommons.org/licenses/by-sa/4.0/" target="_blank">Creative
+            Commons Attribution-ShareAlike 4.0 International License</a>.
+          </p>
+          <p>
+            Please contact <a href="https://donaldtrump-coder.github.io/" target="_blank">Haojun Tang</a>/<a href="https://github.com/neil666-com" target="_blank">Yuyang Wu</a> for feedback or questions.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>

@@ -1,11 +1,12 @@
 # Informative Scene-Reconstruction App
+### *LLM Scene Reconstructor V0.0.1*
 A local software and cloud service system that integrates 3D functionalities including **sparse reconstruction**, **point cloud regions annotation**, **3D Gaussian Splatting (3DGS) real-scene model construction *on-cloud***, **real-scene rendering *on-cloud***, and **LLM-agent guidance**. The system can support applications in tourism and disaster overview, and currently supports fast deployment on both Local (Windows 11) and Server (Linux) environments.<br>
 
 <p align="center">
 <a href="https://donaldtrump-coder.github.io/">Haojun Tang</a>, Jingran Zhang, Siyuan Zou
 </p>
 <p align="center">
-<a href="https://www.csu.edu.cn/">Central Ssouth University</a>
+<a href="https://www.csu.edu.cn/">Central South University</a>
 </p>
 
 ## 🎞️ Demonstration
@@ -13,6 +14,8 @@ A local software and cloud service system that integrates 3D functionalities inc
 [Youtube Video Link](https://www.youtube.com/watch?v=kMFJSooMu10)
 
 ## 🏠 Sturcture
+System Structure:<br>
+<img src="docs/static/images/structure.png" width="50%">
 
 ## 💻 Deployment
 ### Environments
@@ -44,7 +47,28 @@ pip install -r requirements_desktop.txt
 python main.py
 ```
 
+## 📒 To-do List
+
 ## 🤝 Acknowledgements
 Thanks to: [PyQt5]()
 
 ## 📝 License and Citation
+### License
+This project is released under a **Non-Commercial Research License**.<br>
+The software is free for academic research and non-commercial use.<br>
+Commercial use requires a separate license from the authors.<br>
+See the [LICENSE](LICENSE) file for details.<br>
+For commercial licensing, please contact:<br>
+rs_lover@163.com<br>
+
+### Citation
+If you find this project useful in your research, please consider citing:
+```bibtex
+@misc{tang2026informative,
+    title = {Informative Scene-Reconstruction App},
+    author = {Haojun Tang and Jingran Zhang and Siyuan Zou},
+    year = {2026},
+    note={GitHub repository},
+    howpublished={https://github.com/DonaldTrump-coder/Informative-Scene-Reconstruction-App}
+    }
+```
