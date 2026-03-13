@@ -15,7 +15,7 @@ A local software and cloud service system that integrates 3D functionalities inc
 <a href="https://donaldtrump-coder.github.io/">Haojun Tang</a>, Jingran Zhang, Siyuan Zou
 </p>
 <p align="center">
-<a href="https://www.csu.edu.cn/">Central South University</a>
+<a href="https://en.csu.edu.cn/">Central South University</a>
 </p>
 
 ## 🎞️ Demonstration
