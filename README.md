@@ -1,5 +1,14 @@
 # Informative Scene-Reconstruction App
 ### *LLM Scene Reconstructor V0.0.1*
+
+<p align = "center">
+<a href = ""><img src = "https://img.shields.io/badge/Project-Page-4A90E2?logo=openproject&logoColor=white" alt="Project Page"></a>
+<a href = "https://www.python.org/"><img src = "https://img.shields.io/badge/Python-3.9-green?logo=python&logoColor=white" alt="Project Page"></a>
+<a href = "LICENSE"><img src = "https://img.shields.io/badge/License-NonCommercial-purple" alt="License"></a>
+<a><img src = "https://img.shields.io/badge/version-0.0.1-pink"></a>
+<a href="https://github.com/DonaldTrump-coder/Informative-Scene-Reconstruction-App"><img src="https://img.shields.io/github/stars/DonaldTrump-coder/Informative-Scene-Reconstruction-App"></a>
+</p>
+
 A local software and cloud service system that integrates 3D functionalities including **sparse reconstruction**, **point cloud regions annotation**, **3D Gaussian Splatting (3DGS) real-scene model construction *on-cloud***, **real-scene rendering *on-cloud***, and **LLM-agent guidance**. The system can support applications in tourism and disaster overview, and currently supports fast deployment on both Local (Windows 11) and Server (Linux) environments.<br>
 
 <p align="center">
@@ -48,9 +57,14 @@ python main.py
 ```
 
 ## 📒 To-do List
+- [x] Progress Dialogs
+- [ ] English Version
+- [ ] Reconstruction from Videos
+- [ ] Search Engine for LLM-Agent
+- [ ] Multi-GPUs Support
 
 ## 🤝 Acknowledgements
-Thanks to: [PyQt5]()
+Thanks to: [PyQt5](https://www.riverbankcomputing.com/software/pyqt/), [PyColmap](https://colmap.github.io/pycolmap/index.html), [PyOpenGL](https://pyopengl.sourceforge.net/), [PyVista](https://pyvista.org/), [OpenAI Python](https://developers.openai.com/api/reference/overview), [Open3D](https://www.open3d.org/), [WebSocket-Client](https://github.com/websocket-client/websocket-client), [FastAPI](https://fastapi.tiangolo.com/), [uvicorn](https://uvicorn.dev/), [plyfile](https://github.com/dranjan/python-plyfile), [3DGS](https://repo-sam.inria.fr/fungraph/3d-gaussian-splatting/), [Python-Multipart](https://multipart.fastapiexpert.com/)
 
 ## 📝 License and Citation
 ### License
