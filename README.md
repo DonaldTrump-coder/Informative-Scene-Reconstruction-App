@@ -57,6 +57,7 @@ python main.py
 ```
 
 ## 📒 To-do List
+- [x] Core Pipelines
 - [x] Progress Dialogs
 - [ ] English Version
 - [ ] Reconstruction from Videos
