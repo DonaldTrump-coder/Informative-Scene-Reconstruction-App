@@ -12,3 +12,4 @@ server/internal/submodules/fused-ssim
 pillow
 requests
 python-multipart
+argon2-cffi

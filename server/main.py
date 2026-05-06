@@ -14,6 +14,7 @@ from server.GS import train as trainGS, GSrender as renderGS, import_gs as impor
 import torch
 import struct
 import cv2
+from server.user.router import router as user_router
 
 class CameraParam(BaseModel):
     object_id: str
@@ -28,6 +29,9 @@ BASE_STORAGE = os.path.join(os.path.dirname(__file__), "server_storage")
 os.makedirs(BASE_STORAGE, exist_ok=True)
 OUTPUT = os.path.join(BASE_STORAGE, "output")
 os.makedirs(OUTPUT, exist_ok=True)
+
+app.include_router(user_router)
+from server.user.userdb import init_db
     
 class SceneObject:
     object_id = None
@@ -61,6 +65,10 @@ class SceneObject:
     
 scene_objects = {}  # id -> SceneObject
     
+@app.on_event("startup")
+def on_startup():
+    init_db() # automatically start up the database
+
 @app.post("/upload")
 async def upload_files(files: list[UploadFile] = File(...)
                        ):
@@ -105,7 +113,6 @@ def run_training(obj: SceneObject):
 @app.websocket("/ws/render")
 async def render_scene_ws(websocket: WebSocket):
     await websocket.accept()
-    
     try:
         while True:
             data = await websocket.receive_json()

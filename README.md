@@ -1,5 +1,5 @@
 # Informative Scene-Reconstruction App
-### *LLM Scene Reconstructor V0.0.1*
+### *Scene Reconstructor with Guidance Agent V0.0.2*
 
 <p align = "center">
 <a href = "https://donaldtrump-coder.github.io/Informative-Scene-Reconstruction-App/"><img src = "https://img.shields.io/badge/Project-Page-4A90E2?logo=openproject&logoColor=white" alt="Project Page"></a>
@@ -61,6 +61,7 @@ python main.py
 - [x] Progress Dialogs
 - [ ] English Version
 - [ ] Reconstruction from Videos
+- [ ] User-Object Database Service on Server
 - [ ] Search Engine for LLM-Agent
 - [ ] Multi-GPUs Support
 

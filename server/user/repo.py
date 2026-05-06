@@ -1,0 +1,69 @@
+from server.user.userdb import get_conn
+import uuid
+
+# User repository
+def create_user(username, password_hash):
+    conn = get_conn()
+    cursor = conn.cursor()
+    
+    user_id = str(uuid.uuid4()) # generate a unique user id
+    
+    cursor.execute(
+        "INSERT INTO users VALUES (?, ?, ?)",
+        (user_id, username, password_hash)
+    )
+    
+    conn.commit()
+    conn.close()
+    return user_id
+
+def get_user_by_username(username):
+    conn = get_conn()
+    cursor = conn.cursor()
+    
+    cursor.execute(
+        "SELECT id, username, password_hash FROM users WHERE username=?",
+        (username,)
+    )
+    row = cursor.fetchone()
+    conn.close()
+    return row
+
+def get_user_by_id(user_id):
+    conn = get_conn()
+    cursor = conn.cursor()
+    
+    cursor.execute(
+        "SELECT id, username FROM users WHERE id=?",
+        (user_id,)
+    )
+    row = cursor.fetchone()
+    conn.close()
+    return row
+
+# Object repository
+def create_object(user_id, object_name):
+    conn = get_conn()
+    cursor = conn.cursor()
+    
+    object_id = str(uuid.uuid4())
+    
+    cursor.execute(
+        "INSERT INTO objects (object_id, user_id, object_name) VALUES (?, ?, ?)",
+        (object_id, user_id, object_name)
+    )
+    conn.commit()
+    conn.close()
+    return object_id
+
+def get_user_objects(user_id):
+    conn = get_conn()
+    cursor = conn.cursor()
+    
+    cursor.execute(
+        "SELECT object_id, object_name FROM objects WHERE user_id=?",
+        (user_id,)
+    )
+    rows = cursor.fetchall()
+    conn.close()
+    return [{"object_id": r[0], "object_name": r[1]} for r in rows]
