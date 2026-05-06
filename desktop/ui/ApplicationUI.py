@@ -11,12 +11,13 @@ import numpy as np
 from desktop.ui.MessageBubble import MessageBubble
 
 class MainWindow(QMainWindow):
-    def __init__(self, url):
+    def __init__(self, config):
         super().__init__()
-        self.setWindowTitle("LLM Scene Reconstructor V0.0.1")
+        self.setWindowTitle("Scene Reconstructor with Guidance Agent V0.0.2")
         self.setWindowIcon(QIcon("resources/app.png"))
         self.resize(800, 600)
         self.renderthread = RenderThread()
+        url = config["url"]
         self.renderthread.local2server_url = url
         self.renderthread.rendering_url = url + "/ws/render"
         
@@ -63,6 +64,7 @@ class MainWindow(QMainWindow):
         self.renderthread.start()
         
         self.pcd_display_mode = Status_mode.FREE
+        self.user_id = None
 
     def create_page_layout(self, page):
         page_widget = QWidget()
