@@ -45,7 +45,7 @@ conda activate scenereconstruction
 **Server:**
 ```
 pip install torch==2.0.0 torchvision==0.15.1 torchaudio==2.0.1 --index-url https://download.pytorch.org/whl/cu118
-pip install -r requirements_server.txt
+pip install -r requirements_server.txt --no-build-isolation
 uvicorn server.main:app --host 0.0.0.0 --port 8000 (Port 8000 on Server needs to be exposed to Local)
 ```
 
@@ -61,9 +61,11 @@ python main.py
 - [x] Progress Dialogs
 - [ ] English Version
 - [ ] Reconstruction from Videos
-- [ ] User-Object Database Service on Server
+- [x] User-Object Database Service on Server
 - [ ] Search Engine for LLM-Agent
 - [ ] Multi-GPUs Support
+- [ ] Better UI
+- [ ] Multiple Local Platforms Support
 
 ## 🤝 Acknowledgements
 Thanks to: [PyQt5](https://www.riverbankcomputing.com/software/pyqt/), [PyColmap](https://colmap.github.io/pycolmap/index.html), [PyOpenGL](https://pyopengl.sourceforge.net/), [PyVista](https://pyvista.org/), [OpenAI Python](https://developers.openai.com/api/reference/overview), [Open3D](https://www.open3d.org/), [WebSocket-Client](https://github.com/websocket-client/websocket-client), [FastAPI](https://fastapi.tiangolo.com/), [uvicorn](https://uvicorn.dev/), [plyfile](https://github.com/dranjan/python-plyfile), [3DGS](https://repo-sam.inria.fr/fungraph/3d-gaussian-splatting/), [Python-Multipart](https://multipart.fastapiexpert.com/)

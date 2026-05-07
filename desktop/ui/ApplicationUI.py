@@ -65,16 +65,103 @@ class MainWindow(QMainWindow):
         
         self.pcd_display_mode = Status_mode.FREE
         self.user_id = None
+        
+        GLOBAL_QSS = """
+        QMainWindow{
+            background:#eef3f8;
+        }dddd
+        QWidget{
+            font-family: "Microsoft YaHei";
+            font-size:14px;
+            color:#2c3e50;
+        }
+        QTabWidget::pane{
+            border:none;
+            background:transparent;
+        }
+        QTabBar::tab{
+            background:#dfe7f2;
+            padding:10px 22px;
+            border-radius:8px;
+            margin:4px;
+            min-width:120px;
+        }
+        QTabBar::tab:selected{
+            background:white;
+            color:#1f6feb;
+            font-weight:bold;
+        }
+        QMenuBar{
+            background:white;
+            border-bottom:1px solid #d0d7de;
+        }
+        QMenuBar::item:selected{
+            background:#eaf2ff;
+            border-radius:5px;
+        }
+        QMenu{
+            background:white;
+            border:1px solid #d0d7de;
+        }
+        QMenu::item:selected{
+            background:#eaf2ff;
+        }
+        QPushButton{
+            background:white;
+            border:1px solid #c9d4e2;
+            border-radius:10px;
+            padding:8px 18px;
+        }
+        QPushButton:hover{
+            background:#eaf2ff;
+            border:1px solid #7aa2ff;
+        }
+        QPushButton:pressed{
+            background:#d6e6ff;
+        }
+        QListWidget{
+            background:white;
+            border:none;
+            border-radius:12px;
+            padding:8px;
+        }
+        QListWidget::item{
+            padding:8px;
+            border-radius:8px;
+        }
+        QListWidget::item:selected{
+            background:#dbeafe;
+            color:#2563eb;
+        }
+        QLineEdit{
+            background:white;
+            border:1px solid #cbd5e1;
+            border-radius:10px;
+            padding:8px;
+        }
+        QScrollArea{
+            border:none;
+            background:transparent;
+        }
+        QSplitter::handle{
+            background:#d0d7de;
+            width:2px;
+        }
+        QToolTip{
+            background:white;
+            border:1px solid #cbd5e1;
+            color:#2c3e50;
+        }
+        """
+        self.setStyleSheet(GLOBAL_QSS)
 
     def create_page_layout(self, page):
         page_widget = QWidget()
 
-        # 创建水平布局，左侧文件显示区，右侧是图像显示区
         layout = QHBoxLayout(page_widget)
 
         splitter = QSplitter(Qt.Horizontal)
 
-        # 文件显示区：QListWidget
         if page == 1 or page == 2:
             file_list_widget = QListWidget(page_widget)
 

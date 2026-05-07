@@ -15,6 +15,7 @@ import torch
 import struct
 import cv2
 from server.user.router import router as user_router
+from server.user.userdb import init_db
 
 class CameraParam(BaseModel):
     object_id: str
@@ -31,7 +32,6 @@ OUTPUT = os.path.join(BASE_STORAGE, "output")
 os.makedirs(OUTPUT, exist_ok=True)
 
 app.include_router(user_router)
-from server.user.userdb import init_db
     
 class SceneObject:
     object_id = None

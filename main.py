@@ -19,7 +19,7 @@ splash.setWindowFlag(Qt.WindowStaysOnTopHint)
 splash.show()
 app.processEvents()
 
-loader = LoaderThread()
+app.loader = LoaderThread()
 
 def on_login_finished(result, dialog, window):
     if result == QDialog.Accepted:
@@ -28,17 +28,16 @@ def on_login_finished(result, dialog, window):
     else:
         QApplication.quit()
 def on_finished(config):
-    window = MainWindow(config)
-    window.setEnabled(False)
-    window.show()
-    login_dialog = LoginDialog()
-    login_dialog.setWindowModality(Qt.ApplicationModal)
-    login_dialog.finished.connect(
-        lambda result: on_login_finished(result, login_dialog, window)
+    app.window = MainWindow(config)
+    app.window.show()
+    app.login_dialog = LoginDialog(config)
+    #login_dialog.setWindowModality(Qt.ApplicationModal)
+    app.login_dialog.finished.connect(
+        lambda result: on_login_finished(result, app.login_dialog, app.window)
     )
-    login_dialog.show()
-    splash.finish(window)
+    app.login_dialog.show()
+    splash.finish(app.window)
 
-loader.finished.connect(on_finished)
-loader.start()
+app.loader.finished.connect(on_finished, Qt.QueuedConnection)
+app.loader.start()
 sys.exit(app.exec_())

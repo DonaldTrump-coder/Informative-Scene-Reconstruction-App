@@ -28,8 +28,8 @@ def login(username, password): # original password
         return None, "wrong password"
     return user[0], None # return user id
 
-def create_object(user_id, object_name):
-    return repo.create_object(user_id, object_name)
+def create_object(user_id, object_name, project_path):
+    return repo.create_object(user_id, object_name, project_path)
 
 def list_objects(user_id):
     return repo.get_user_objects(user_id)

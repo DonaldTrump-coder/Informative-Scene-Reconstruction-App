@@ -1,7 +1,7 @@
 import sqlite3
-from server.main import BASE_STORAGE
 import os
 
+BASE_STORAGE = os.path.join(os.path.dirname(__file__), "..", "server_storage")
 DB_PATH = os.path.join(BASE_STORAGE, "users.db")
 
 def get_conn():
@@ -22,6 +22,7 @@ def init_db():
         object_id TEXT PRIMARY KEY,
         user_id TEXT,
         object_name TEXT,
+        project_path TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
     """)

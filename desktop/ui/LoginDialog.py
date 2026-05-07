@@ -1,8 +1,10 @@
 from PyQt5.QtWidgets import QDialog, QVBoxLayout, QLineEdit, QPushButton, QHBoxLayout, QLabel, QWidget
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import Qt, QTimer
+from desktop.ui.toast import Toast
+import requests
 
 class LoginDialog(QDialog):
-    def __init__(self):
+    def __init__(self, config):
         super().__init__()
         self.resize(300, 150)
         self.setWindowFlags(Qt.FramelessWindowHint)
@@ -48,6 +50,7 @@ class LoginDialog(QDialog):
         self.user_id = None
         self.login_btn.clicked.connect(self.login)
         self.register_btn.clicked.connect(self.register)
+        self.url = config["url"]
         
         self.setStyleSheet("""
             #container {
@@ -90,6 +93,7 @@ class LoginDialog(QDialog):
             }
         """)
         self._drag_pos = None
+        self.toast = Toast(self)
         
     def mousePressEvent(self, event):
         if event.button() == Qt.LeftButton:
@@ -101,10 +105,47 @@ class LoginDialog(QDialog):
             self._drag_pos = event.globalPos()
         
     def login(self):
-        pass
+        username = self.username.text().strip()
+        password = self.password.text().strip()
+        
+        if not username or not password:
+            self.toast.show_message("用户名或密码不能为空！", 2000)
+            return
+        try:
+            r = requests.post(
+                self.url + "/user/login",
+                params={"username": username, "password": password},
+                timeout=5
+            )
+            if r.status_code == 200:
+                data = r.json()
+                self.user_id = data.get("user_id")
+                self.toast.show_message("登录成功")
+                QTimer.singleShot(800, self.accept)
+            else:
+                self.toast.show_message("登录失败")
+        except Exception:
+            self.toast.show_message("服务器连接失败")
     
     def register(self):
-        pass
+        username = self.username.text().strip()
+        password = self.password.text().strip()
+        if not username or not password:
+            self.toast.show_message("请输入用户名和密码")
+            return
+        
+        try:
+            r = requests.post(
+                self.url + "/user/register",
+                params={"username": username, "password": password},
+                timeout=5
+            )
+            if r.status_code == 200:
+                self.toast.show_message("注册成功")
+            else:
+                self.toast.show_message("注册失败")
+        except Exception:
+            self.toast.show_message("服务器连接失败")
     
     def closeEvent(self, event):
         self.reject()

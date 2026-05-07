@@ -42,15 +42,15 @@ def get_user_by_id(user_id):
     return row
 
 # Object repository
-def create_object(user_id, object_name):
+def create_object(user_id, object_name, project_path):
     conn = get_conn()
     cursor = conn.cursor()
     
     object_id = str(uuid.uuid4())
     
     cursor.execute(
-        "INSERT INTO objects (object_id, user_id, object_name) VALUES (?, ?, ?)",
-        (object_id, user_id, object_name)
+        "INSERT INTO objects (object_id, user_id, object_name, project_path) VALUES (?, ?, ?, ?)",
+        (object_id, user_id, object_name, project_path)
     )
     conn.commit()
     conn.close()
@@ -61,9 +61,9 @@ def get_user_objects(user_id):
     cursor = conn.cursor()
     
     cursor.execute(
-        "SELECT object_id, object_name FROM objects WHERE user_id=?",
+        "SELECT object_id, object_name, project_path FROM objects WHERE user_id=?",
         (user_id,)
     )
     rows = cursor.fetchall()
     conn.close()
-    return [{"object_id": r[0], "object_name": r[1]} for r in rows]
+    return [{"object_id": r[0], "object_name": r[1], "project_path": r[2]} for r in rows]
