@@ -1,10 +1,11 @@
 from openai import OpenAI
+from desktop.LLM.api_key import api_key
 
 class LLM:
     def __init__(self):
-        self.api_key = "sk-qgspupbsugmoknadoxohwuquyjfgtaljqspethzzywthvhgx"
+        self.api_key = api_key
         self.base_url = "https://api.siliconflow.cn/v1"
-        self.model = "THUDM/glm-4-9b-chat"
+        self.model = "deepseek-ai/DeepSeek-V4-Flash"
         self.client = OpenAI(
             base_url=self.base_url,
             api_key=self.api_key

@@ -9,6 +9,8 @@ import os
 from desktop.render.rendermode import Status_mode
 import numpy as np
 from desktop.ui.MessageBubble import MessageBubble
+from desktop.ui.createprojectUI import CreateProjectWindow
+from desktop.ui.serverprojectsUI import ServerProjectDialog
 
 class MainWindow(QMainWindow):
     def __init__(self, config):
@@ -28,7 +30,7 @@ class MainWindow(QMainWindow):
         self.page1 = self.create_page_layout(1)
         self.page2 = self.create_page_layout(2)
         self.page3 = self.create_page_layout(3)
-        self.tab_widget.addTab(self.page1, "图像输入")
+        self.tab_widget.addTab(self.page1, "影像输入")
         self.tab_widget.addTab(self.page2, "点云标注")
         self.tab_widget.addTab(self.page3, "实景生成")
         self.tab_widget.currentChanged.connect(self.on_tab_changed)
@@ -59,8 +61,10 @@ class MainWindow(QMainWindow):
         
         self.renderthread.frame_ready.connect(self.current_gl.set_image)
         self.renderthread.add_image_list.connect(self.add_Image_names)
+        self.renderthread.clear_image_list.connect(self.clear_all_images)
         self.renderthread.start_new_signal.connect(self.start_bot_message)
         self.renderthread.update_text_signal.connect(self.update_bot_message)
+        self.renderthread.request_project_path.connect(self.open_project_window)
         self.renderthread.start()
         
         self.pcd_display_mode = Status_mode.FREE
@@ -110,7 +114,7 @@ class MainWindow(QMainWindow):
             background:white;
             border:1px solid #c9d4e2;
             border-radius:10px;
-            padding:8px 18px;
+            padding:8px 5px;
         }
         QPushButton:hover{
             background:#eaf2ff;
@@ -219,7 +223,7 @@ class MainWindow(QMainWindow):
             icon_label = QLabel()
             icon = QIcon("resources/bot_title.png")
             icon_label.setPixmap(icon.pixmap(QSize(30, 30)))
-            title_label = QLabel("智能体导览区")
+            title_label = QLabel("智能体导览")
             title_label.setAlignment(Qt.AlignCenter)
             title_label.setStyleSheet(
                 """
@@ -301,14 +305,17 @@ class MainWindow(QMainWindow):
         pcd_menu = menubar.addMenu("点云")
 
         project_action = QAction("创建项目", self)
-        open_project_action = QAction("打开项目", self)
-        open_action=QAction("打开图像", self)
+        open_project_action = QAction("打开本地项目", self)
+        open_server_project_action = QAction("从云端选择项目", self)
+        open_action=QAction("导入影像", self)
         open_action.triggered.connect(self.Open_images)
         project_action.triggered.connect(self.renderthread.set_project_path)
         open_project_action.triggered.connect(self.renderthread.open_project)
+        open_server_project_action.triggered.connect(self.server_project_window)
         file_menu.addAction(open_action)
         file_menu.addAction(project_action)
         file_menu.addAction(open_project_action)
+        file_menu.addAction(open_server_project_action)
         
         self.choose_action = QAction("选择", self)
         self.unchoose_action = QAction("取消选择", self)
@@ -351,6 +358,17 @@ class MainWindow(QMainWindow):
             item.setData(Qt.UserRole, image)
             self.current_list.addItem(item)
         self.current_list.itemClicked.connect(self.on_item_clicked)
+    
+    def clear_all_images(self):
+        if self.current_page == self.page1:
+            self.current_list.clear()
+            
+    def server_project_window(self):
+        self.server_project_objects_window = ServerProjectDialog(self)
+        self.server_project_objects_window.request_signal.connect(self.renderthread.get_server_objects)
+        self.renderthread.objects_ready.connect(self.server_project_objects_window.disp_scenes)
+        self.server_project_objects_window.selected_scene_signal.connect()
+        self.server_project_objects_window.show()
 
     def on_item_clicked(self, item):
         if self.current_page == self.page1:
@@ -675,3 +693,13 @@ class MainWindow(QMainWindow):
         self.chat_input.clear()
         self.add_user_message(text)
         self.renderthread.agentthread.send_message_signal.emit(text)
+        
+    def set_thread_user_id(self):
+        self.renderthread.user_id = self.user_id
+        
+    def open_project_window(self):
+        self.project_window = CreateProjectWindow(self)
+        self.project_window.project_selected.connect(
+            self.renderthread.on_project_selected
+        )
+        self.project_window.show()

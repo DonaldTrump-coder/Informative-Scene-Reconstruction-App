@@ -21,9 +21,10 @@ app.processEvents()
 
 app.loader = LoaderThread()
 
-def on_login_finished(result, dialog, window):
+def on_login_finished(result, dialog, window: MainWindow):
     if result == QDialog.Accepted:
         window.user_id = dialog.user_id
+        window.set_thread_user_id()
         window.setEnabled(True)
     else:
         QApplication.quit()

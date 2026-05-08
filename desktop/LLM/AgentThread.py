@@ -45,6 +45,8 @@ class AgentThread(QThread):
                 if self.send_mode == True:
                     self.send_message(self.text_send)
                     self.send_mode = False
+                    QThread.msleep(10)
+                    continue
                 
                 self.mutex.lock()
                 pcd_labels = None if self.pcd_labels is None else self.pcd_labels
@@ -95,6 +97,8 @@ class AgentThread(QThread):
         self.wait()
         
     def set_coordinate(self, R: np.ndarray, T: np.ndarray):
+        if R is None or T is None:
+            self.x, self.y, self.z = None
         C = -R.T @ T
         self.x, self.y, self.z = C[0], C[1], C[2]
         

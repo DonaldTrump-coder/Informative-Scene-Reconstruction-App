@@ -38,3 +38,6 @@ def init_db():
     
     conn.commit()
     conn.close()
+    
+# On server: stores user-password data and user-object-project_path data
+# On local: stores project progress data in project_path

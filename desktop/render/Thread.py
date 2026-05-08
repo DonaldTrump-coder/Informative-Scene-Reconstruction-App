@@ -1,4 +1,4 @@
-from PyQt5.QtCore import QThread, pyqtSignal, QMutex, QWaitCondition, QObject, QTimer
+from PyQt5.QtCore import QThread, pyqtSignal, QMutex, QWaitCondition, QObject, QTimer, pyqtSlot
 import numpy as np
 from desktop.render.rendermode import Rendering_mode, Status_mode
 from desktop.render.cameras import get_init_camera
@@ -23,6 +23,7 @@ import time
 class RenderThread(QThread):
     frame_ready = pyqtSignal(np.ndarray)
     add_image_list = pyqtSignal(list)
+    clear_image_list = pyqtSignal()
     start_new_signal = pyqtSignal()
     update_text_signal = pyqtSignal(str)
     sfm_progress = pyqtSignal(int)
@@ -37,6 +38,8 @@ class RenderThread(QThread):
     train_canceled = pyqtSignal()
     pcd_loading_started = pyqtSignal()
     pcd_loading_finished = pyqtSignal()
+    request_project_path = pyqtSignal()
+    objects_ready = pyqtSignal(list)
     parser = None
     camera = None
     R = None # [3x3]
@@ -70,13 +73,18 @@ class RenderThread(QThread):
     
     local2server_url = ""
     rendering_url = ""
-    server_scene_id = "e13c7c38-a429-472c-bbce-29af24fb916c"
+    server_scene_id = None
     server_running = True
+    user_id = None
     
     # thread tools
     mutex = QMutex()
     cond = QWaitCondition()
     paused = False
+    
+    # progress tools
+    sparse = False
+    gs = False
 
     def __init__(self):
         super().__init__()
@@ -87,7 +95,6 @@ class RenderThread(QThread):
         self.cx = self.W / 2
         self.cy = self.H / 2
         self.K = np.array([[self.fx, 0, self.cx], [0, self.fy, self.cy], [0, 0, 1]])
-        self.project = rec_project()
 
         self.project_set = False
         self.agentthread = AgentThread()
@@ -96,19 +103,66 @@ class RenderThread(QThread):
         self.agentthread.start()
 
     def set_project_path(self):
+        self.request_project_path.emit()
+    
+    def on_project_selected(self, project_folder, project_name):
         # set path from a filedialog
-        self.project_folder = QFileDialog.getExistingDirectory(None, "请选择图像文件夹")
+        # create a scene in server
         if self.project_folder:
+            self.project_folder = project_folder
+            create_url = self.local2server_url + "/user/create_object"
+            params = {
+                "user_id": self.user_id,
+                "object_name": project_name,
+                "project_path": project_folder
+            }
+            r = requests.post(create_url, params=params)
+            self.server_scene_id = r.json()["object_id"] # object id of the created scene
+        
             self.reconstructor = constructor(os.path.join(self.project_folder, "project.db"))
             self.project_set = True
             self.sparse_folder = os.path.join(self.project_folder, "output", "sparse")
             
+            self.project = rec_project()
+            self.project.set_path(self.project_folder, self.server_scene_id)
+            
     def open_project(self):
         self.project_folder = QFileDialog.getExistingDirectory(None, "请选择项目文件夹")
         if self.project_folder:
+            self.project = rec_project()
+            self.project.read_from_path(self.project_folder)
+            self.server_scene_id = self.project.object_id
             self.sparse_folder = os.path.join(self.project_folder, "output", "sparse")
+            self.project_set = True
+            
+            self.images = []
+            self.clear_image_list.emit()
+            self.image_folder = os.path.join(self.project_folder, "temp", "images")
+            if os.path.isdir(self.image_folder):
+                self.get_images()
+                
+    def open_project_from_path(self, project_folder):
+        if project_folder:
+            self.project_folder = project_folder
+            self.project = rec_project()
+            self.project.read_from_path(self.project_folder)
+            self.server_scene_id = self.project.object_id
+            self.sparse_folder = os.path.join(self.project_folder, "output", "sparse")
+            self.project_set = True
+            
+            self.images = []
+            self.clear_image_list.emit()
+            self.image_folder = os.path.join(self.project_folder, "temp", "images")
+            if os.path.isdir(self.image_folder):
+                self.get_images()
 
     def set_3DGS_RGB(self):
+        if self.project_set is False:
+            QMessageBox.warning(None, "Warning", "当前未设置项目！")
+            return
+        if self.project.gs is False:
+            QMessageBox.warning(None, "Warning", "还未进行实景生成！")
+            return
         self.rendering_mode = Rendering_mode.RENDERING
 
     def set_image(self):
@@ -118,8 +172,11 @@ class RenderThread(QThread):
         if self.pcd is not None:
             self.rendering_mode = Rendering_mode.PCD
         else:
-            if self.sparse_folder is None:
+            if self.project_set is False:
                 QMessageBox.warning(None, "Warning", "当前未设置项目！")
+                return
+            if self.project.sparse is False:
+                QMessageBox.warning(None, "Warning", "还未进行稀疏重建！")
                 return
             self.pcd_loading_started.emit()
             self.pcd_loading_thread = QThread()
@@ -289,6 +346,8 @@ class RenderThread(QThread):
             if self.rendering_mode is Rendering_mode.NONE or self.rendering_mode is Rendering_mode.IMAGE:
                 continue
             if self.rendering_mode is Rendering_mode.PCD:
+                if self.project.sparse is False:
+                    continue
                 self.pcd.set_camera(R, T, H, W, K)
                 if select_bbox is not None:
                     left, top, right, bottom = select_bbox
@@ -311,10 +370,14 @@ class RenderThread(QThread):
                 self.frame_ready.emit(image)
                     
             elif self.rendering_mode is Rendering_mode.RENDERING:
-                self.agentthread.set_coordinate(R, T)
+                self.agentthread.set_coordinate(None, None)
                 if not self.server_running:
                     continue
+                if self.project.gs is False:
+                    continue
+                self.agentthread.set_coordinate(R, T)
                 payload = {
+                    "user_id": self.user_id,
                     "object_id": self.server_scene_id,
                     "K": K.tolist(),
                     "R": R.tolist(),
@@ -345,6 +408,8 @@ class RenderThread(QThread):
         self.mutex.unlock()
 
     def set_simple_image(self):
+        if self.rendering_mode != Rendering_mode.IMAGE:
+            return
         data = np.fromfile(self.current_image, dtype=np.uint8)
         image = cv2.imdecode(data, cv2.IMREAD_COLOR)
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
@@ -393,6 +458,8 @@ class RenderThread(QThread):
             self.sfm_thread.quit()
     
     def _on_sfm_finished(self):
+        if self.project_set is True:
+            self.project.set_sparse()
         self.sfm_finished.emit()
         
     def _on_sfm_canceled(self):
@@ -497,10 +564,13 @@ class RenderThread(QThread):
         xmin, ymin, zmin, xmax, ymax, zmax = self.pcd.get_label_bbox()
         self.pcd_labels.append(PCD_label(name, description, (xmin, ymin, zmin, xmax, ymax, zmax)))
         self.agentthread.set_pcd_labels(self.pcd_labels)
+        self.project.set_pcd_labels(self.pcd_labels)
         
     def upload_folder(self):
         self.upload_thread = QThread()
         self.upload_worker = UploadWorker(
+            self.user_id,
+            self.server_scene_id,
             self.project_folder,
             self.local2server_url
         )
@@ -519,17 +589,22 @@ class RenderThread(QThread):
     def upload_cancel(self):
         self.upload_worker.stop()
     
-    def _upload_finished(self, scene_id):
-        self.server_scene_id = scene_id
+    def _upload_finished(self, status):
+        if status == "uploaded":
+            if self.project_set is True:
+                self.project.set_uploaded()
         self.upload_finished.emit()
         self.upload_thread.quit()
         
     def scene_train(self):
         def check_ws_and_train():
             if self.ws.ws is not None:
-                timer.stop()
+                self.train_timer.stop()
+            else:
+                return
             url = self.local2server_url + "/train"
             params = {
+                "user_id": self.user_id,
                 "object_id": self.server_scene_id
             }
             self.train_monitor_thread = QThread()
@@ -542,16 +617,18 @@ class RenderThread(QThread):
             self.train_monitor_thread.start()
             requests.post(url, params=params) # send training signal
 
-        timer = QTimer()
-        timer.setInterval(500)
-        timer.timeout.connect(check_ws_and_train)
-        timer.start()
+        self.train_timer = QTimer()
+        self.train_timer.setInterval(500)
+        self.train_timer.timeout.connect(check_ws_and_train)
+        self.train_timer.start()
         
     def _train_canceled(self):
         self.train_canceled.emit()
         self.train_monitor_thread.quit()
         
     def _train_finished(self):
+        if self.project_set is True:
+            self.project.set_gs()
         self.train_finished.emit()
         self.train_monitor_thread.quit()
         
@@ -563,6 +640,26 @@ class RenderThread(QThread):
         
     def update_message(self, token):
         self.update_text_signal.emit(token)
+        
+    @pyqtSlot()
+    def get_server_objects(self): # find all objects of the user on server
+        if self.user_id is not None:
+            try:
+                params = {"user_id": self.user_id}
+                url = self.local2server_url + "/user/objects"
+                response = requests.get(url, params=params)
+                if response.status_code == 200:
+                    data = response.json()
+                    self.objects_ready.emit(data)
+            except Exception as _:
+                return
+            
+    def set_scene(self, scene_data):
+        project_folder = scene_data["project_path"]
+        object_id = scene_data["object_id"]
+        if os.path.exists(os.path.join(project_folder, "project.db")):
+            self.open_project_from_path(project_folder)
+            self.server_scene_id = object_id
         
 class SFMWorker(QObject):
     progress = pyqtSignal(int)
@@ -615,8 +712,10 @@ class UploadWorker(QObject):
     canceled = pyqtSignal()
     uploaded = pyqtSignal()
     
-    def __init__(self, project_folder, url):
+    def __init__(self, user_id, object_id, project_folder, url):
         super().__init__()
+        self.user_id = user_id
+        self.object_id = object_id
         self.project_folder = project_folder
         self.url = url
         self._running = True
@@ -641,10 +740,15 @@ class UploadWorker(QObject):
             percent = int((i+1)/total*100)
             self.progress.emit(percent)
         self.uploaded.emit()
-        r = requests.post(self.url + "/upload", files=files_to_upload)
-        scene_id = r.json()["id"]
+        r = requests.post(self.url + "/upload",
+                          files=files_to_upload,
+                          data={
+                              "user_id": self.user_id,
+                              "object_id": self.object_id
+                          })
+        status = r.json()["status"]
         self.progress.emit(100)
-        self.finished.emit(scene_id)
+        self.finished.emit(status)
     
     def stop(self):
         self._running = False

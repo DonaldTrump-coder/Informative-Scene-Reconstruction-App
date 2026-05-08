@@ -49,7 +49,7 @@ class PCD:
             self.plotter = pv.Plotter(off_screen=True, window_size=(W, H))
             self.plotter_set = True
             self.cloud = pv.PolyData(self.points_xyz)
-            self.cloud["rgb"] = self.points_rgb
+            self.cloud["rgb"] = self.points_rgb.copy()
             
             # set points
             self.plotter.add_points(self.cloud, scalars="rgb", rgb=True, point_size=2)
@@ -86,7 +86,7 @@ class PCD:
         )
         self.select_mask[idx_z[in_bbox]] = True
         
-        self.cloud["rgb"] = self.added_points_rgb
+        self.cloud["rgb"][:] = self.added_points_rgb[:]
         self.cloud["rgb"][self.select_mask] = self.highlight_color
         
     def add_new_unselect(self, R, T, H, W, K, left, top, right, bottom):
@@ -107,7 +107,7 @@ class PCD:
         )
         self.select_mask[idx_z[in_bbox]] = True
         
-        self.cloud["rgb"][:] = self.added_points_rgb
+        self.cloud["rgb"][:] = self.added_points_rgb[:]
         self.cloud["rgb"][self.select_mask] = self.points_rgb[self.select_mask]
         
     def select(self, R, T, H, W, K, left, top, right, bottom):
@@ -131,7 +131,7 @@ class PCD:
         self.select_mask[idx_z[in_bbox]] = True
         self.added_points_rgb[self.select_mask] = self.highlight_color
         
-        self.cloud["rgb"] = self.added_points_rgb
+        self.cloud["rgb"][:] = self.added_points_rgb[:]
         self.selected_mask[self.select_mask] = True
         
     def unselect(self, R, T, H, W, K, left, top, right, bottom):
@@ -155,12 +155,12 @@ class PCD:
         self.select_mask[idx_z[in_bbox]] = True
         self.added_points_rgb[self.select_mask] = self.points_rgb[self.select_mask]
         
-        self.cloud["rgb"] = self.added_points_rgb
+        self.cloud["rgb"][:] = self.added_points_rgb[:]
         self.selected_mask[self.select_mask] = False
         
     def unselect_all(self):
         self.added_points_rgb[:] = self.points_rgb
-        self.cloud["rgb"] = self.added_points_rgb
+        self.cloud["rgb"][:] = self.added_points_rgb
         self.selected_mask[:] = False
         
     def render(self):

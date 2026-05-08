@@ -3,3 +3,4 @@ data/
 .vscode/
 *.egg-info/
 *build/
+*api_key*

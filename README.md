@@ -62,6 +62,7 @@ python main.py
 - [ ] English Version
 - [ ] Reconstruction from Videos
 - [x] User-Object Database Service on Server
+- [x] Scene Managements on Server
 - [ ] Search Engine for LLM-Agent
 - [ ] Multi-GPUs Support
 - [ ] Better UI
