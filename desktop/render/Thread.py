@@ -40,6 +40,7 @@ class RenderThread(QThread):
     pcd_loading_finished = pyqtSignal()
     request_project_path = pyqtSignal()
     objects_ready = pyqtSignal(list)
+    update_list = pyqtSignal()
     parser = None
     camera = None
     R = None # [3x3]
@@ -108,7 +109,7 @@ class RenderThread(QThread):
     def on_project_selected(self, project_folder, project_name):
         # set path from a filedialog
         # create a scene in server
-        if self.project_folder:
+        if project_folder:
             self.project_folder = project_folder
             create_url = self.local2server_url + "/user/create_object"
             params = {
@@ -119,7 +120,7 @@ class RenderThread(QThread):
             r = requests.post(create_url, params=params)
             self.server_scene_id = r.json()["object_id"] # object id of the created scene
         
-            self.reconstructor = constructor(os.path.join(self.project_folder, "project.db"))
+            self.reconstructor = constructor(os.path.join(self.project_folder, "reconstructor.db"))
             self.project_set = True
             self.sparse_folder = os.path.join(self.project_folder, "output", "sparse")
             
@@ -132,6 +133,7 @@ class RenderThread(QThread):
             self.project = rec_project()
             self.project.read_from_path(self.project_folder)
             self.server_scene_id = self.project.object_id
+            self.reconstructor = constructor(os.path.join(self.project_folder, "reconstructor.db"))
             self.sparse_folder = os.path.join(self.project_folder, "output", "sparse")
             self.project_set = True
             
@@ -140,6 +142,8 @@ class RenderThread(QThread):
             self.image_folder = os.path.join(self.project_folder, "temp", "images")
             if os.path.isdir(self.image_folder):
                 self.get_images()
+            self.get_project_labels()
+            self.update_list.emit()
                 
     def open_project_from_path(self, project_folder):
         if project_folder:
@@ -147,6 +151,7 @@ class RenderThread(QThread):
             self.project = rec_project()
             self.project.read_from_path(self.project_folder)
             self.server_scene_id = self.project.object_id
+            self.reconstructor = constructor(os.path.join(self.project_folder, "reconstructor.db"))
             self.sparse_folder = os.path.join(self.project_folder, "output", "sparse")
             self.project_set = True
             
@@ -155,6 +160,8 @@ class RenderThread(QThread):
             self.image_folder = os.path.join(self.project_folder, "temp", "images")
             if os.path.isdir(self.image_folder):
                 self.get_images()
+            self.get_project_labels()
+            self.update_list.emit()
 
     def set_3DGS_RGB(self):
         if self.project_set is False:
@@ -408,7 +415,7 @@ class RenderThread(QThread):
         self.mutex.unlock()
 
     def set_simple_image(self):
-        if self.rendering_mode != Rendering_mode.IMAGE:
+        if self.rendering_mode is not Rendering_mode.IMAGE and self.rendering_mode is not Rendering_mode.NONE:
             return
         data = np.fromfile(self.current_image, dtype=np.uint8)
         image = cv2.imdecode(data, cv2.IMREAD_COLOR)
@@ -565,6 +572,10 @@ class RenderThread(QThread):
         self.pcd_labels.append(PCD_label(name, description, (xmin, ymin, zmin, xmax, ymax, zmax)))
         self.agentthread.set_pcd_labels(self.pcd_labels)
         self.project.set_pcd_labels(self.pcd_labels)
+        
+    def get_project_labels(self):
+        self.pcd_labels = self.project.pcd_labels.copy()
+        self.agentthread.set_pcd_labels(self.pcd_labels)
         
     def upload_folder(self):
         self.upload_thread = QThread()

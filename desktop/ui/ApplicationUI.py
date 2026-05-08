@@ -65,6 +65,7 @@ class MainWindow(QMainWindow):
         self.renderthread.start_new_signal.connect(self.start_bot_message)
         self.renderthread.update_text_signal.connect(self.update_bot_message)
         self.renderthread.request_project_path.connect(self.open_project_window)
+        self.renderthread.update_list.connect(self.update_current_list)
         self.renderthread.start()
         
         self.pcd_display_mode = Status_mode.FREE
@@ -367,8 +368,9 @@ class MainWindow(QMainWindow):
         self.server_project_objects_window = ServerProjectDialog(self)
         self.server_project_objects_window.request_signal.connect(self.renderthread.get_server_objects)
         self.renderthread.objects_ready.connect(self.server_project_objects_window.disp_scenes)
-        self.server_project_objects_window.selected_scene_signal.connect()
+        self.server_project_objects_window.selected_scene_signal.connect(self.renderthread.set_scene)
         self.server_project_objects_window.show()
+        self.server_project_objects_window.request_signal.emit()
 
     def on_item_clicked(self, item):
         if self.current_page == self.page1:

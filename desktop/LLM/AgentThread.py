@@ -98,7 +98,8 @@ class AgentThread(QThread):
         
     def set_coordinate(self, R: np.ndarray, T: np.ndarray):
         if R is None or T is None:
-            self.x, self.y, self.z = None
+            self.x, self.y, self.z = None, None, None
+            return
         C = -R.T @ T
         self.x, self.y, self.z = C[0], C[1], C[2]
         

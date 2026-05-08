@@ -32,7 +32,7 @@ def on_finished(config):
     app.window = MainWindow(config)
     app.window.show()
     app.login_dialog = LoginDialog(config)
-    #login_dialog.setWindowModality(Qt.ApplicationModal)
+    app.login_dialog.setWindowModality(Qt.ApplicationModal)
     app.login_dialog.finished.connect(
         lambda result: on_login_finished(result, app.login_dialog, app.window)
     )

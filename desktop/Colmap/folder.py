@@ -7,7 +7,10 @@ def temp_images(temp_folder, image_list:list[str]):
     for index, image in enumerate(image_list):
         ext = os.path.splitext(image)[1]
         dest = os.path.join(dir, f'{index}{ext}')
-        shutil.copy2(image, dest)
+        src = os.path.normcase(os.path.abspath(image))
+        dst = os.path.normcase(os.path.abspath(dest))
+        if src != dst:
+            shutil.copy2(image, dest)
     return dir
 
 def temp_sparse(temp_folder, sparse_folder):
