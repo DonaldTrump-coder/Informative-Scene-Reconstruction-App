@@ -11,10 +11,109 @@ class VideoWindow(QWidget):
         )
         self.extract_thread = None
         self.output_dir = output_dir
+        self.setStyleSheet("""
+        QWidget{
+            background:#f8fbff;
+        }
+        #titleLabel{
+            font-size:18px;
+            font-weight:700;
+            color:#1e3a8a;
+        }
+        QLabel{
+            font-size:13px;
+            color:#334155;
+        }
+        QLineEdit{
+            background:white;
+            border:1px solid #d6e2f0;
+            border-radius:12px;
+            padding:8px 12px;
+            font-size:13px;
+        }
+        QLineEdit:focus{
+            border:1px solid #60a5fa;
+        }
+        QSpinBox{
+            background:white;
+            border:1px solid #d6e2f0;
+            border-radius:12px;
+            padding:6px 10px;
+            font-size:13px;
+        }
+        QSpinBox:focus{
+            border:1px solid #60a5fa;
+        }
+        QSpinBox::up-button{
+            width:18px;
+            background:white;
+            border:none;
+            margin-right:4px;
+            border-top-right-radius:8px;
+        }
+        QSpinBox::down-button{
+            width:18px;
+            background:white;
+            border:none;
+            margin-right:4px;
+            border-bottom-right-radius:8px;
+        }
+        QSpinBox::up-button:hover,
+        QSpinBox::down-button:hover{
+            background:#edf4ff;
+        }
+        QSpinBox::up-button:pressed,
+        QSpinBox::down-button:pressed{
+            background:#dbeafe;
+        }
+        QSpinBox::up-arrow{
+            image: url(resources/icons/chevron-up.svg);
+            width:8px;
+            height:8px;
+        }
+        QSpinBox::down-arrow{
+            image: url(resources/icons/chevron-down.svg);
+            width:8px;
+            height:8px;
+        }
+        QPushButton{
+            background:white;
+            border:1px solid #d6e2f0;
+            border-radius:14px;
+            padding:10px 18px;
+            font-size:14px;
+        }
+        QPushButton:hover{
+            background:#edf4ff;
+            border:1px solid #7aa2ff;
+        }
+        #primaryBtn{
+            background:#2563eb;
+            color:white;
+            border:none;
+            font-weight:600;
+        }
+        #primaryBtn:hover{
+            background:#1d4ed8;
+        }
+        QProgressBar{
+            background:white;
+            border:1px solid #dbe7ff;
+            border-radius:10px;
+            text-align:center;
+            height:18px;
+        }
+        QProgressBar::chunk{
+            background:#2563eb;
+            border-radius:8px;
+        }
+        """)
         
         self.setWindowTitle("视频抽帧")
-        self.resize(500, 180)
+        self.resize(540, 220)
         main_layout = QVBoxLayout(self)
+        main_layout.setContentsMargins(24, 20, 24, 20)
+        main_layout.setSpacing(16)
         
         video_file_layout = QHBoxLayout()
         self.video_edit = QLineEdit()
@@ -49,6 +148,7 @@ class VideoWindow(QWidget):
         btn_layout.addWidget(self.extract_btn)
         btn_layout.addWidget(self.cancel_btn)
         main_layout.addLayout(btn_layout)
+        self.extract_btn.setObjectName("primaryBtn")
     
     def choose_video(self):
         file_path, _ = QFileDialog.getOpenFileName(

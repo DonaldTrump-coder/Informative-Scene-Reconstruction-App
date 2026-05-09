@@ -60,7 +60,7 @@ python main.py
 - [x] Core Pipelines
 - [x] Progress Dialogs
 - [ ] English Version
-- [ ] Reconstruction from Videos
+- [x] Reconstruction from Videos
 - [x] User-Object Database Service on Server
 - [x] Scene Managements on Server
 - [ ] Search Engine for LLM-Agent

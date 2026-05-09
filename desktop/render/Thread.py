@@ -214,6 +214,8 @@ class RenderThread(QThread):
             file_path = os.path.join(self.image_folder,filename)
             if os.path.isfile(file_path) and any(filename.lower().endswith(ext) for ext in supported_extensions):
                 self.images.append(file_path)
+        if not self.images:
+            return
         self.current_image = self.images[0]
         self.set_simple_image()
         self.add_image_list.emit(self.images)
@@ -223,6 +225,8 @@ class RenderThread(QThread):
         self.set_simple_image()
 
     def move_right(self, step=0.1):
+        if self.rendering_mode is Rendering_mode.RENDERING:
+            step = step * 0.2
         if self.R is None:
             return
         dir = self.R[0 , :]
@@ -232,6 +236,8 @@ class RenderThread(QThread):
             self.T = -self.R @ (-self.R.T@self.T + step*dir)
         
     def move_left(self, step=0.1):
+        if self.rendering_mode is Rendering_mode.RENDERING:
+            step = step * 0.2
         if self.R is None:
             return
         dir = self.R[0 , :]
@@ -241,12 +247,16 @@ class RenderThread(QThread):
             self.T = -self.R @ (-self.R.T@self.T - step*dir)
 
     def move_forward(self, step=0.1):
+        if self.rendering_mode is Rendering_mode.RENDERING:
+            step = step * 0.2
         if self.R is None:
             return
         dir = self.R[2 , :]
         self.T = -self.R @ (-self.R.T@self.T + step*dir)
 
     def move_back(self, step = 0.1):
+        if self.rendering_mode is Rendering_mode.RENDERING:
+            step = step * 0.2
         if self.R is None:
             return
         dir = self.R[2 , :]
@@ -868,7 +878,12 @@ class VideoFrameExtractThread(QThread):
                 return
             container = av.open(self.video_path)
             stream = container.streams.video[0]
-            total_frames = stream.frames if stream.frames else 0
+            if stream.frames:
+                total_frames = stream.frames
+            elif stream.duration and stream.average_rate:
+                total_frames = int(stream.duration * float(stream.average_rate) * stream.time_base)
+            else:
+                total_frames = 0
             frame_idx = 0
             saved_count = 0
             save_dir = os.path.join(self.output_dir, self.video_name)
@@ -896,3 +911,6 @@ class VideoFrameExtractThread(QThread):
                 self.finished_signal.emit(self.video_name)
         except Exception as e:
             self.error_signal.emit()
+            
+    def stop(self):
+        self._running = False
