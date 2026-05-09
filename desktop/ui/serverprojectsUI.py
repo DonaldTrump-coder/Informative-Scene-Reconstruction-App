@@ -151,6 +151,7 @@ class ServerProjectDialog(QWidget):
         self.cancel_btn.clicked.connect(self.close)
         self.refresh_btn.clicked.connect(self.request_signal.emit)
         self.select_all_btn.clicked.connect(self.select_all)
+        self.delete_btn.clicked.connect(self.delete_selected)
         
         self.selected_scene = None
         self.scene_widgets: list[SceneItemWidget] = []

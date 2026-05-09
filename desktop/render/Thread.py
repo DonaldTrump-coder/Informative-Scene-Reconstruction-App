@@ -672,7 +672,7 @@ class RenderThread(QThread):
             except Exception as _:
                 return
     
-    @pyqtSlot(str)
+    @pyqtSlot(list)
     def delete_server_object(self, object_id_list):
         if self.user_id is not None:
             try:
