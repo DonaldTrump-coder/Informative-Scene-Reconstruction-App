@@ -1,4 +1,4 @@
-from PyQt5.QtWidgets import QMainWindow, QHBoxLayout, QWidget, QAction, QFileDialog, QActionGroup, QTabWidget, QListWidget, QSplitter, QListWidgetItem, QVBoxLayout, QPushButton, QToolButton, QSizePolicy, QButtonGroup, QDialog, QScrollArea, QLineEdit, QLabel, QApplication
+from PyQt5.QtWidgets import QMainWindow, QHBoxLayout, QWidget, QAction, QFileDialog, QActionGroup, QTabWidget, QListWidget, QSplitter, QListWidgetItem, QVBoxLayout, QPushButton, QToolButton, QSizePolicy, QButtonGroup, QDialog, QScrollArea, QLineEdit, QLabel, QApplication, QMessageBox
 from PyQt5.QtCore import Qt, QEvent, QTimer, QSize, QRect, QPoint, pyqtSignal
 from PyQt5.QtGui import QIcon
 from desktop.ui.GLUI import GLWidget
@@ -11,6 +11,7 @@ import numpy as np
 from desktop.ui.MessageBubble import MessageBubble
 from desktop.ui.createprojectUI import CreateProjectWindow
 from desktop.ui.serverprojectsUI import ServerProjectDialog
+from desktop.ui.Videowindow import VideoWindow
 
 class MainWindow(QMainWindow):
     def __init__(self, config):
@@ -309,14 +310,17 @@ class MainWindow(QMainWindow):
         open_project_action = QAction("打开本地项目", self)
         open_server_project_action = QAction("从云端选择项目", self)
         open_action=QAction("导入影像", self)
+        open_video_action = QAction("导入视频", self)
         open_action.triggered.connect(self.Open_images)
         project_action.triggered.connect(self.renderthread.set_project_path)
         open_project_action.triggered.connect(self.renderthread.open_project)
         open_server_project_action.triggered.connect(self.server_project_window)
+        open_video_action.triggered.connect(self.open_video_window)
         file_menu.addAction(open_action)
         file_menu.addAction(project_action)
         file_menu.addAction(open_project_action)
         file_menu.addAction(open_server_project_action)
+        file_menu.addAction(open_video_action)
         
         self.choose_action = QAction("选择", self)
         self.unchoose_action = QAction("取消选择", self)
@@ -367,6 +371,7 @@ class MainWindow(QMainWindow):
     def server_project_window(self):
         self.server_project_objects_window = ServerProjectDialog(self)
         self.server_project_objects_window.request_signal.connect(self.renderthread.get_server_objects)
+        self.server_project_objects_window.delete_signal.connect(self.renderthread.delete_server_object)
         self.renderthread.objects_ready.connect(self.server_project_objects_window.disp_scenes)
         self.server_project_objects_window.selected_scene_signal.connect(self.renderthread.set_scene)
         self.server_project_objects_window.show()
@@ -705,3 +710,11 @@ class MainWindow(QMainWindow):
             self.renderthread.on_project_selected
         )
         self.project_window.show()
+        
+    def open_video_window(self):
+        if self.renderthread.project_set is False:
+            QMessageBox.warning(None, "Warning", "当前无项目！")
+            return
+        self.video_window = VideoWindow(os.path.join(self.renderthread.project_folder, "temp", "video_images"), self)
+        self.video_window.finish_signal.connect(self.renderthread.video_frames_got)
+        self.video_window.show()

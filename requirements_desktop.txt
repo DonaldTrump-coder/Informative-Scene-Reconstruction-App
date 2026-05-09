@@ -10,3 +10,4 @@ pyvista
 requests
 websocket-client
 openai
+av

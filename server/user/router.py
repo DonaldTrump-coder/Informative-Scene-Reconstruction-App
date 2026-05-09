@@ -1,5 +1,6 @@
 from fastapi import APIRouter, HTTPException
 from server.user import service
+from typing import List
 
 router = APIRouter(prefix="/user", tags=["user"])
 
@@ -29,3 +30,16 @@ def create_object(user_id: str, object_name: str, project_path: str):
         project_path
     )
     return {"object_id": object_id}
+
+@router.delete("/delete_object")
+def delete_object(user_id: str, object_ids: List[str]):
+    success = service.delete_object(user_id, object_ids)
+    if success:
+        return {
+            "success": True,
+            "message": "Deleted"
+        }
+    return {
+        "success": False,
+        "message": "Failed"
+    }

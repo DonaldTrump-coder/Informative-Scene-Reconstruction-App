@@ -19,6 +19,8 @@ from server.webtools import is_server_running
 from desktop.render.WSthread import WSThread
 from PyQt5.QtWidgets import QMessageBox
 import time
+import av
+import shutil
 
 class RenderThread(QThread):
     frame_ready = pyqtSignal(np.ndarray)
@@ -57,6 +59,7 @@ class RenderThread(QThread):
     sparse_folder = None
     pcd = None
     pcd_labels = [] # point cloud labels list
+    project_folder = None
     
     display_mode = Status_mode.FREE
     select_bbox = None # (left, top, right, bottom) in glwidget
@@ -162,6 +165,10 @@ class RenderThread(QThread):
                 self.get_images()
             self.get_project_labels()
             self.update_list.emit()
+            
+    def video_frames_got(self, video_name: str):
+        self.image_folder = os.path.join(self.project_folder, "temp", "video_images", video_name)
+        self.get_images()
 
     def set_3DGS_RGB(self):
         if self.project_set is False:
@@ -664,6 +671,30 @@ class RenderThread(QThread):
                     self.objects_ready.emit(data)
             except Exception as _:
                 return
+    
+    @pyqtSlot(str)
+    def delete_server_object(self, object_id_list):
+        if self.user_id is not None:
+            try:
+                params = [
+                    ("user_id", self.user_id)
+                ]
+                for oid in object_id_list:
+                    params.append(
+                        ("object_ids", oid)
+                    )
+                
+                url = self.local2server_url + "/user/delete_object"
+                response = requests.delete(
+                    url,
+                    params=params
+                )
+                if response.status_code == 200:
+                    data = response.json()
+                    if data.get("success"):
+                        self.get_server_objects()
+            except Exception as _:
+                return
             
     def set_scene(self, scene_data):
         project_folder = scene_data["project_path"]
@@ -814,3 +845,54 @@ class PCD_Loader(QObject):
         R, T = pcd.get_extrinsics_init()
         pcd.set_camera(R, T, self.H, self.W, self.K)
         self.finished.emit(pcd, R, T)
+        
+class VideoFrameExtractThread(QThread):
+    progress_signal = pyqtSignal(int)
+    finished_signal = pyqtSignal(str)
+    error_signal = pyqtSignal()
+    
+    def __init__(self, video_path, output_dir, interval=30):
+        super().__init__()
+        self.video_path = video_path
+        self.output_dir = output_dir
+        self.interval = interval
+        self._running = True
+        self.video_name = os.path.splitext(
+            os.path.basename(self.video_path)
+        )[0]
+        
+    def run(self):
+        try:
+            if not os.path.exists(self.video_path):
+                self.error_signal.emit()
+                return
+            container = av.open(self.video_path)
+            stream = container.streams.video[0]
+            total_frames = stream.frames if stream.frames else 0
+            frame_idx = 0
+            saved_count = 0
+            save_dir = os.path.join(self.output_dir, self.video_name)
+            if os.path.exists(save_dir):
+                shutil.rmtree(save_dir)
+            os.makedirs(save_dir, exist_ok=True)
+            for frame in container.decode(video=0):
+                if not self._running:
+                    break
+                if frame_idx % self.interval == 0:
+                    img = frame.to_image()
+                    save_path = os.path.join(
+                        self.output_dir,
+                        self.video_name,
+                        f"frame_{saved_count:06d}.jpg"
+                    )
+                    img.save(save_path)
+                    saved_count += 1
+                if total_frames > 0:
+                    progress = int(frame_idx / total_frames * 100)
+                    self.progress_signal.emit(progress)
+                frame_idx += 1
+            container.close()
+            if self._running:
+                self.finished_signal.emit(self.video_name)
+        except Exception as e:
+            self.error_signal.emit()

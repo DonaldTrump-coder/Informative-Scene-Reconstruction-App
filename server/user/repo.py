@@ -67,3 +67,25 @@ def get_user_objects(user_id):
     rows = cursor.fetchall()
     conn.close()
     return [{"object_id": r[0], "object_name": r[1], "project_path": r[2]} for r in rows]
+
+def delete_object(user_id, object_ids):
+    if not object_ids:
+        return False
+    conn = get_conn()
+    cursor = conn.cursor()
+    placeholders = ",".join(
+        "?" * len(object_ids)
+    )
+    sql = f"""
+        DELETE FROM objects
+        WHERE user_id=?
+        AND object_id IN ({placeholders})
+    """
+    cursor.execute(
+        sql,
+        [user_id] + object_ids
+    )
+    conn.commit()
+    deleted = cursor.rowcount > 0
+    conn.close()
+    return deleted

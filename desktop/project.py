@@ -15,6 +15,8 @@ class rec_project:
     def set_path(self, project_folder, object_id):
         self.db_path = os.path.join(project_folder, "project.db")
         self.object_id = object_id
+        os.makedirs(os.path.join(project_folder, "temp", "images"), exist_ok=True)
+        os.makedirs(os.path.join(project_folder, "temp", "video_images"), exist_ok=True)
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
         

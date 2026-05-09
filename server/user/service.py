@@ -33,3 +33,6 @@ def create_object(user_id, object_name, project_path):
 
 def list_objects(user_id):
     return repo.get_user_objects(user_id)
+
+def delete_object(user_id, object_ids):
+    return repo.delete_object(user_id, object_ids)
