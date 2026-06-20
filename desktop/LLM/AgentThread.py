@@ -3,6 +3,8 @@ from desktop.LLM.LLMtools import LLM
 import numpy as np
 from desktop.Colmap.pcd import PCD_label
 import time
+from langchain_core.tools import tool
+import json
 
 class AgentThread(QThread):
     
@@ -14,6 +16,7 @@ class AgentThread(QThread):
     start_new_signal = pyqtSignal()
     update_text_signal = pyqtSignal(str)
     send_message_signal = pyqtSignal(str)
+    navigate_signal = pyqtSignal(object) # target: np.ndarray(3,)
     
     def __init__(self):
         super().__init__()
@@ -91,6 +94,126 @@ class AgentThread(QThread):
                         self.update_text_signal.emit(token)
                     message = {'role': 'assistant', 'content': self.last_response}
                     self.messages.append(message)
+                    
+    def _build_tool_definitions(self):
+        return [
+            {
+                "type": "function",
+                "function": {
+                    "name": "list_labels",
+                    "description": "列出当前场景中所有标注的名称、序号和描述",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {},
+                        "required": [],
+                    },
+                },
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "navigate_to_label",
+                    "description": "导航到指定标注的位置",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "query": {
+                                "type": "string",
+                                "description": "标注名称或序号，如'书桌'或'0'",
+                            },
+                        },
+                        "required": ["query"],
+                    },
+                },
+            },
+        ]
+        
+    def _execute_tool(self, name, args_str):
+        try:
+            args = json.loads(args_str) if args_str else {}
+        except json.JSONDecodeError:
+            args = {}
+            
+        if name == "list_labels":
+            labels = self.pcd_labels
+            if not labels:
+                return "当前场景没有任何标注"
+            lines = []
+            for i, label in enumerate(labels):
+                lines.append(f"[{i}] {label.name} | {label.description}")
+            return "\n".join(lines)
+
+        elif name == "navigate_to_label":
+            query = args.get("query", "")
+            labels = self.pcd_labels
+            if not labels:
+                return "没有可导航的标注"
+            try:
+                idx = int(query)
+                if 0 <= idx < len(labels):
+                    self.navigate_signal.emit(idx)
+                    return f"已导航到 [{idx}] {labels[idx].name}"
+            except ValueError:
+                pass
+            for i, label in enumerate(labels):
+                if query.lower() in label.name.lower():
+                    self.navigate_signal.emit(i)
+                    return f"已导航到 [{i}] {label.name}"
+            return f"未找到'{query}'"
+        return f"未知工具: {name}"
+    
+    # tool-calling
+    def _agent_send_message(self, text):
+        self.start_new_signal.emit()
+        system_prompt = (
+            "你是一个3D场景导览助手。"
+            "你可以列出标注(list_labels)和导航到标注位置(navigate_to_label)。"
+            "当用户想看某个地方时，主动调用 navigate_to_label。"
+            "回复简洁友好，用中文。"
+        )
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": text},
+        ]
+        tools = self._build_tool_definitions()
+        for _ in range(3):
+            full_text = ""
+            tool_calls = []
+            for item_type, item in self.llm.send_with_tools(messages, tools):
+                if item_type == "text":
+                    full_text += item
+                    self.update_text_signal.emit(item)
+                elif item_type == "tool_call":
+                    tool_calls.append(item)
+            if not tool_calls:
+                return
+            messages.append({
+                "role": "assistant",
+                "content": full_text or None,
+                "tool_calls": [
+                    {
+                        "id": tc["id"],
+                        "type": "function",
+                        "function": {
+                            "name": tc["function"]["name"],
+                            "arguments": tc["function"]["arguments"],
+                        },
+                    }
+                    for tc in tool_calls
+                ],
+            })
+            for tc in tool_calls:
+                name = tc["function"]["name"]
+                result = self._execute_tool(name, tc["function"]["arguments"])
+                messages.append({
+                    "role": "tool",
+                    "tool_call_id": tc["id"],
+                    "content": result,
+                })
+            messages.append({
+                "role": "user",
+                "content": "工具已执行。如果用户请求已完成，请给出最终回复。",
+            })
         
     def stop(self):
         self.running = False

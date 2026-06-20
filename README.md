@@ -44,14 +44,14 @@ conda activate scenereconstruction
 ### Dependencies and Running
 **Server:**
 ```
-pip install torch==2.0.0 torchvision==0.15.1 torchaudio==2.0.1 --index-url https://download.pytorch.org/whl/cu118
+pip install torch==2.0.0 torchvision==0.15.1 torchaudio==2.0.1 --index-url https://download.pytorch.org/whl/cu118 or pip install torch==2.0.0 torchvision==0.15.1 torchaudio==2.0.1 -i https://pypi.tuna.tsinghua.edu.cn/simple
 pip install -r requirements_server.txt --no-build-isolation
 uvicorn server.main:app --host 0.0.0.0 --port 8000 (Port 8000 on Server needs to be exposed to Local)
 ```
 
 **Local:**
 ```
-pip install torch==2.4.0 torchvision==0.19.0 torchaudio==2.4.0 --index-url https://download.pytorch.org/whl/cu124
+pip install torch==2.4.0 torchvision==0.19.0 torchaudio==2.4.0 --index-url https://download.pytorch.org/whl/cu124 or pip install torch==2.4.0 torchvision==0.19.0 torchaudio==2.4.0 -i https://pypi.tuna.tsinghua.edu.cn/simple
 pip install -r requirements_desktop.txt
 python main.py
 ```
@@ -64,6 +64,7 @@ python main.py
 - [x] User-Object Database Service on Server
 - [x] Scene Managements on Server
 - [ ] Search Engine for LLM-Agent
+- [ ] Tools for LLM-Agent
 - [ ] Multi-GPUs Support
 - [ ] Better UI
 - [ ] Multiple Local Platforms Support

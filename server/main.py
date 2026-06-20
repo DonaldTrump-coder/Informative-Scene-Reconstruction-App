@@ -17,6 +17,7 @@ import cv2
 from server.user.router import router as user_router
 from server.user.userdb import init_db
 from typing import Dict
+import json
 
 class CameraParam(BaseModel):
     object_id: str
@@ -138,17 +139,23 @@ async def render_scene_ws(websocket: WebSocket):
                 scene_objects[key] = scene_object
             
             obj = scene_objects[key]
-            with obj.render_lock:
-                if obj.gaussians is None:
-                    obj.import_gs(os.path.join(OUTPUT, obj.user_id, obj.object_id))
+            if obj.train_status != "Trained":
+                await websocket.send_text(json.dumps({"status": "not_trained"}))
+                continue
             K = np.array(data["K"], dtype=np.float32)
             R = np.array(data["R"], dtype=np.float32)
             t = np.array(data["t"], dtype=np.float32)
             H = data["H"]
             W = data["W"]
             
-            with obj.render_lock:
-                img = obj.render(K, R, t, H, W)
+            try:
+                with obj.render_lock:
+                    if obj.gaussians is None:
+                        obj.import_gs(os.path.join(OUTPUT, obj.user_id, obj.object_id))
+                    img = obj.render(K, R, t, H, W)
+            except Exception as e:
+                print("render error:", e)
+                continue
             
             if isinstance(img, torch.Tensor):
                 img = img.permute(1, 2, 0).detach().cpu().numpy()

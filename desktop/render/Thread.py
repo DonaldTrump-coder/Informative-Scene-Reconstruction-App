@@ -105,6 +105,17 @@ class RenderThread(QThread):
         self.agentthread.start_new_signal.connect(self.start_new_response)
         self.agentthread.update_text_signal.connect(self.update_message)
         self.agentthread.start()
+        
+        self._pending_label_bbox = None
+        self._bbox_changed = False
+        
+        # navigation animation
+        self._nav_animating = False
+        self._nav_target_lookat = None
+        self._nav_start_C = None
+        self._nav_end_C = None
+        self._nav_start_time = 0.0
+        self._nav_duration = 0.4
 
     def set_project_path(self):
         self.request_project_path.emit()
@@ -218,6 +229,22 @@ class RenderThread(QThread):
             return
         self.current_image = self.images[0]
         self.set_simple_image()
+        self.add_image_list.emit(self.images)
+        
+    def remove_image(self, row: int):
+        if row < 0 or row >= len(self.images):
+            return
+        del self.images[row]
+        if self.images:
+            self.current_image = self.images[0]
+            self.set_simple_image()
+        else:
+            self.current_image = None
+        self.add_image_list.emit(self.images)
+        
+    def remove_all_images(self):
+        self.images.clear()
+        self.current_image = None
         self.add_image_list.emit(self.images)
 
     def set_current_image(self, image):
@@ -362,7 +389,33 @@ class RenderThread(QThread):
             H = self.H
             W = self.W
             
+            if self._nav_animating:
+                elapsed = time.perf_counter() - self._nav_start_time
+                t = min(elapsed / self._nav_duration, 1.0)
+                ease = t * t * (3 - 2 * t)  # ease-in-out
+                
+                new_C = self._nav_start_C + (self._nav_end_C - self._nav_start_C) * ease
+                up = np.array([0, 1, 0])
+                look = self._nav_target_lookat - new_C
+                look = look / np.linalg.norm(look)
+                right = np.cross(up, look)
+                right = right / np.linalg.norm(right)
+                true_up = np.cross(look, right)
+                self.R = np.stack([right, true_up, look], axis=0)
+                self.T = -self.R @ new_C
+                if t >= 1.0:
+                    self._nav_animating = False
+            
+            if self._bbox_changed:
+                if self.rendering_mode is Rendering_mode.PCD and self.pcd is not None:
+                    if self._pending_label_bbox is not None:
+                        bbox = self.pcd_labels[self._pending_label_bbox].bbox
+                        self.pcd.add_label_bbox(bbox)
+                    else:
+                        self.pcd.remove_label_bbox()
+                self._bbox_changed = False
             self.mutex.unlock()
+            
             if R is None or T is None or K is None:
                 continue
             
@@ -584,6 +637,37 @@ class RenderThread(QThread):
         self.pcd.unselect_all()
         self.resume()
         
+    def navigate_to(self, label_index):
+        if self.pcd is None or self.R is None:
+            return
+        if label_index < 0 or label_index >= len(self.pcd_labels):
+            return
+        bbox = self.pcd_labels[label_index].bbox
+        xmin, ymin, zmin, xmax, ymax, zmax = bbox
+        center = np.array([(xmin + xmax) / 2, (ymin + ymax) / 2, (zmin + zmax) / 2])
+
+        diag = np.linalg.norm([xmax - xmin, ymax - ymin, zmax - zmin])
+        view_dist = max(diag * 1.2, 2.0)
+        
+        self.mutex.lock()
+        C = -self.R.T @ self.T
+        h_dir = C - center
+        h_dir[1] = 0
+        h_norm = np.linalg.norm(h_dir)
+        if h_norm < 0.01:
+            h_dir = np.array([0, 0, 1])
+        else:
+            h_dir = h_dir / h_norm
+        h_dir[1] = 0.35
+        h_dir = h_dir / np.linalg.norm(h_dir)
+        end_C = center + h_dir * view_dist
+        self._nav_target_lookat = center
+        self._nav_start_C = C
+        self._nav_end_C = end_C
+        self._nav_start_time = time.perf_counter()
+        self._nav_animating = True
+        self.mutex.unlock()
+        
     def add_label(self, name, description):
         xmin, ymin, zmin, xmax, ymax, zmax = self.pcd.get_label_bbox()
         self.pcd_labels.append(PCD_label(name, description, (xmin, ymin, zmin, xmax, ymax, zmax)))
@@ -712,6 +796,15 @@ class RenderThread(QThread):
         if os.path.exists(os.path.join(project_folder, "project.db")):
             self.open_project_from_path(project_folder)
             self.server_scene_id = object_id
+            
+    def show_label_bbox(self, index):
+        if index < len(self.pcd_labels):
+            self._pending_label_bbox = index
+            self._bbox_changed = True
+    
+    def hide_label_bbox(self):
+        self._pending_label_bbox = None
+        self._bbox_changed = True
         
 class SFMWorker(QObject):
     progress = pyqtSignal(int)

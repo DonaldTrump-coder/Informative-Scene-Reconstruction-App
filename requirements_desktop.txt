@@ -11,3 +11,5 @@ requests
 websocket-client
 openai
 av
+langgraph
+langchain-openai

@@ -95,6 +95,8 @@ class LoginDialog(QDialog):
         self._drag_pos = None
         self.toast = Toast(self)
         
+        self._worker = None
+        
     def mousePressEvent(self, event):
         if event.button() == Qt.LeftButton:
             self._drag_pos = event.globalPos()
@@ -105,47 +107,76 @@ class LoginDialog(QDialog):
             self._drag_pos = event.globalPos()
         
     def login(self):
+        if self._worker is not None:
+            return
+        
         username = self.username.text().strip()
         password = self.password.text().strip()
-        
         if not username or not password:
             self.toast.show_message("用户名或密码不能为空！", 2000)
             return
-        try:
-            r = requests.post(
-                self.url + "/user/login",
-                params={"username": username, "password": password},
-                timeout=5
-            )
-            if r.status_code == 200:
-                data = r.json()
-                self.user_id = data.get("user_id")
-                self.toast.show_message("登录成功")
-                QTimer.singleShot(800, self.accept)
-            else:
-                self.toast.show_message("登录失败")
-        except Exception:
-            self.toast.show_message("服务器连接失败")
+        
+        self._set_loading(True)
+        self._worker = AuthWorker(self.url, "login", username, password)
+        self._worker.finished.connect(self._on_auth_finished)
+        self._worker.start()
+            
+    def _on_auth_finished(self, success, message, data):
+        self._set_loading(False)
+        self.toast.show_message(message, 2000)
+        if success:
+            self.user_id = data.get("user_id")
+            QTimer.singleShot(800, self.accept)
     
     def register(self):
+        if self._worker is not None:
+            return
         username = self.username.text().strip()
         password = self.password.text().strip()
         if not username or not password:
             self.toast.show_message("请输入用户名和密码")
             return
         
-        try:
-            r = requests.post(
-                self.url + "/user/register",
-                params={"username": username, "password": password},
-                timeout=5
-            )
-            if r.status_code == 200:
-                self.toast.show_message("注册成功")
-            else:
-                self.toast.show_message("注册失败")
-        except Exception:
-            self.toast.show_message("服务器连接失败")
+        self._set_loading(True)
+        self._worker = AuthWorker(self.url, "register", username, password)
+        self._worker.finished.connect(self._on_auth_finished)
+        self._worker.start()
     
     def closeEvent(self, event):
-        self.reject()
+        if self._worker is not None and self._worker.isRunning():
+            self._worker.quit()
+            self._worker.wait(1000)
+        super().closeEvent(event)
+    
+    def _set_loading(self, loading):
+        self.username.setEnabled(not loading)
+        self.password.setEnabled(not loading)
+        self.login_btn.setEnabled(not loading)
+        self.register_btn.setEnabled(not loading)
+        self.login_btn.setText("请稍候…" if loading else "登录")
+        
+from PyQt5.QtCore import QThread, pyqtSignal
+class AuthWorker(QThread):
+    finished = pyqtSignal(bool, str, dict)
+    def __init__(self, url, mode, username, password):
+        super().__init__()
+        self.url = url
+        self.mode = mode
+        self.username = username
+        self.password = password
+        
+    def run(self):
+        try:
+            endpoint = f"{self.url}/user/{self.mode}"
+            r = requests.post(
+                endpoint,
+                params={"username": self.username, "password": self.password},
+                timeout=5,
+            )
+            if r.status_code == 200:
+                data = r.json()
+                self.finished.emit(True, "登录成功" if self.mode == "login" else "注册成功", data)
+            else:
+                self.finished.emit(False, "操作失败", {})
+        except Exception:
+            self.finished.emit(False, "服务器连接失败", {})

@@ -27,6 +27,8 @@ class PCD:
         self.selected_mask = np.zeros(self.points_xyz.shape[0], dtype=bool)
         self.highlight_color = np.array([255, 0, 0], dtype=np.uint8) # red for selected points
         
+        self.label_bbox_actor = None
+        
     def get_extrinsics_init(self):
         self.center = self.points_xyz.mean(axis=0)
         max_range = np.linalg.norm(self.points_xyz.max(axis=0) - self.points_xyz.min(axis=0)) * 0.2
@@ -177,6 +179,34 @@ class PCD:
         xmin, ymin, zmin = label_points.min(axis=0)
         xmax, ymax, zmax = label_points.max(axis=0)
         return (xmin, ymin, zmin, xmax, ymax, zmax)
+    
+    def remove_label_bbox(self):
+        if self.label_bbox_actor is not None:
+            self.plotter.remove_actor(self.label_bbox_actor)
+            self.label_bbox_actor = None
+    
+    def add_label_bbox(self, bbox):
+        self.remove_label_bbox()
+        xmin, ymin, zmin, xmax, ymax, zmax = bbox
+        vertices = np.array([
+            [xmin, ymin, zmin], [xmax, ymin, zmin],
+            [xmax, ymax, zmin], [xmin, ymax, zmin],
+            [xmin, ymin, zmax], [xmax, ymin, zmax],
+            [xmax, ymax, zmax], [xmin, ymax, zmax],
+        ])
+        faces = np.array([
+            [4, 0, 1, 2, 3],
+            [4, 4, 5, 6, 7],
+            [4, 0, 1, 5, 4],
+            [4, 2, 3, 7, 6],
+            [4, 1, 2, 6, 5],
+            [4, 0, 3, 7, 4],
+        ])
+        box = pv.PolyData(vertices, faces)
+        self.label_bbox_actor = self.plotter.add_mesh(
+            box, color='yellow', opacity=0.2,
+            show_edges=True, edge_color='orange', line_width=2
+        )
         
 if __name__ == '__main__':
     pcd = PCD("D:\\Projects\\Informative-Scene-Reconstruction-App\\data\\playroom\\output\\sparse\\0\\cameras.bin", "D:\\Projects\\Informative-Scene-Reconstruction-App\\data\\playroom\\output\\sparse\\0\\images.bin", "D:\\Projects\\Informative-Scene-Reconstruction-App\\data\\playroom\\output\\sparse\\0\\points3D.bin")

@@ -4,12 +4,23 @@ import shutil
 def temp_images(temp_folder, image_list:list[str]):
     dir = os.path.join(temp_folder, "temp", "images") # the directory of temp images
     os.makedirs(dir, exist_ok=True)
+    keep = set()
+    for index, image in enumerate(image_list):
+        ext = os.path.splitext(image)[1]
+        keep.add(f'{index}{ext}')
+        
+    for name in os.listdir(dir):
+        if name not in keep:
+            path = os.path.join(dir, name)
+            if os.path.isfile(path):
+                os.remove(path)
+    
     for index, image in enumerate(image_list):
         ext = os.path.splitext(image)[1]
         dest = os.path.join(dir, f'{index}{ext}')
         src = os.path.normcase(os.path.abspath(image))
         dst = os.path.normcase(os.path.abspath(dest))
-        if src != dst:
+        if src != dst and not os.path.exists(dest):
             shutil.copy2(image, dest)
     return dir
 

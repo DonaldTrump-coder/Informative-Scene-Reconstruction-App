@@ -28,6 +28,44 @@ class LLM:
                     token = token.lstrip("\n")
                 first_token = False
                 yield token
+                
+    def send_with_tools(self, messages, tools):
+        response = self.client.chat.completions.create(
+            model=self.model,
+            messages=messages,
+            tools=tools,
+            stream=True,
+        )
+        tool_buf = {}
+        for chunk in response:
+            if not chunk.choices:
+                continue
+            delta = chunk.choices[0].delta
+            if delta.content:
+                yield ("text", delta.content)
+            if delta.tool_calls:
+                for tc in delta.tool_calls:
+                    idx = tc.index
+                    if idx not in tool_buf:
+                        tool_buf[idx] = {"id": tc.id or "", "name": "", "arguments": ""}
+                    buf = tool_buf[idx]
+                    if tc.id:
+                        buf["id"] = tc.id
+                    if tc.function:
+                        if tc.function.name:
+                            buf["name"] += tc.function.name
+                        if tc.function.arguments:
+                            buf["arguments"] += tc.function.arguments
+        for buf in tool_buf.values():
+            if buf["name"]:
+                yield ("tool_call", {
+                    "id": buf["id"],
+                    "type": "function",
+                    "function": {
+                        "name": buf["name"],
+                        "arguments": buf["arguments"],
+                    }
+                })
         
 if __name__ == "__main__":
     llm = LLM()

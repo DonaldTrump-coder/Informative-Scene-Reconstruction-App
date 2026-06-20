@@ -39,7 +39,7 @@ class constructor:
         )
 
     def sfm(self, progress_callback=None):
-        total_steps = 3
+        total_steps = 4
         step = 0
         
         if self.running:

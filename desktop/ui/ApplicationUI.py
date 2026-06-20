@@ -1,4 +1,4 @@
-from PyQt5.QtWidgets import QMainWindow, QHBoxLayout, QWidget, QAction, QFileDialog, QActionGroup, QTabWidget, QListWidget, QSplitter, QListWidgetItem, QVBoxLayout, QPushButton, QToolButton, QSizePolicy, QButtonGroup, QDialog, QScrollArea, QLineEdit, QLabel, QApplication, QMessageBox
+from PyQt5.QtWidgets import QMainWindow, QHBoxLayout, QWidget, QAction, QFileDialog, QActionGroup, QTabWidget, QListWidget, QSplitter, QListWidgetItem, QVBoxLayout, QPushButton, QToolButton, QSizePolicy, QButtonGroup, QDialog, QScrollArea, QLineEdit, QLabel, QApplication, QMessageBox, QMenu
 from PyQt5.QtCore import Qt, QEvent, QTimer, QSize, QRect, QPoint, pyqtSignal
 from PyQt5.QtGui import QIcon
 from desktop.ui.GLUI import GLWidget
@@ -12,6 +12,7 @@ from desktop.ui.MessageBubble import MessageBubble
 from desktop.ui.createprojectUI import CreateProjectWindow
 from desktop.ui.serverprojectsUI import ServerProjectDialog
 from desktop.ui.Videowindow import VideoWindow
+from desktop.ui.CollapsibleLabelPanel import CollapsibleLabelPanel
 
 class MainWindow(QMainWindow):
     def __init__(self, config):
@@ -67,6 +68,7 @@ class MainWindow(QMainWindow):
         self.renderthread.update_text_signal.connect(self.update_bot_message)
         self.renderthread.request_project_path.connect(self.open_project_window)
         self.renderthread.update_list.connect(self.update_current_list)
+        self.renderthread.agentthread.navigate_signal.connect(self.renderthread.navigate_to)
         self.renderthread.start()
         
         self.pcd_display_mode = Status_mode.FREE
@@ -160,6 +162,8 @@ class MainWindow(QMainWindow):
         }
         """
         self.setStyleSheet(GLOBAL_QSS)
+        
+        self._current_label_index = -1
 
     def create_page_layout(self, page):
         page_widget = QWidget()
@@ -177,19 +181,52 @@ class MainWindow(QMainWindow):
         if page == 1:
             Button_widget = QWidget()
             left_layout.addWidget(Button_widget)
-            button_layout = QHBoxLayout(Button_widget)
+            btn_outer = QVBoxLayout(Button_widget)
+            btn_outer.setContentsMargins(0, 0, 0, 0)
+            btn_outer.setSpacing(6)
+            
+            row1 = QHBoxLayout()
             button1 = QPushButton("稀疏重建")
-            button_layout.addWidget(button1)
-            icon1 = QIcon("resources/play.png")
-            button1.setIcon(icon1)
+            button1.setIcon(QIcon("resources/play.png"))
             button1.clicked.connect(self.start_sfm)
+            row1.addWidget(button1)
+            btn_outer.addLayout(row1)
+            
+            row2 = QHBoxLayout()
+            row2.setSpacing(6)
+            self.delete_selected_btn = QPushButton("删除选定图像")
+            self.delete_selected_btn.clicked.connect(self.on_delete_selected_image)
+            row2.addWidget(self.delete_selected_btn)
+            self.delete_all_btn = QPushButton("删除所有图像")
+            self.delete_all_btn.clicked.connect(self.on_delete_all_images)
+            row2.addWidget(self.delete_all_btn)
+            btn_outer.addLayout(row2)
+            
             splitter.addWidget(left_container)
+            
         elif page == 2:
+            Button_widget = QWidget()
+            left_layout.addWidget(Button_widget)
+            btn_outer = QVBoxLayout(Button_widget)
+            btn_outer.setContentsMargins(0, 0, 0, 0)
+            btn_outer.setSpacing(6)
+            row1 = QHBoxLayout()
             button1 = QPushButton("生成实景")
-            left_layout.addWidget(button1)
-            icon1 = QIcon("resources/play-button.png")
-            button1.setIcon(icon1)
+            button1.setIcon(QIcon("resources/play-button.png"))
             button1.clicked.connect(self.start_server_training)
+            row1.addWidget(button1)
+            btn_outer.addLayout(row1)
+            
+            row2 = QHBoxLayout()
+            row2.setSpacing(6)
+            self.delete_label_btn = QPushButton("删除选定标注")
+            self.delete_label_btn.clicked.connect(self.on_delete_selected_label)
+            row2.addWidget(self.delete_label_btn)
+            self.delete_all_labels_btn = QPushButton("删除所有标注")
+            self.delete_all_labels_btn.clicked.connect(self.on_delete_all_labels)
+            row2.addWidget(self.delete_all_labels_btn)
+            
+            btn_outer.addLayout(row2)
             splitter.addWidget(left_container)
         
         if page == 2:
@@ -201,19 +238,21 @@ class MainWindow(QMainWindow):
             self.add_tool("resources/select.png", "选择", self.selection_status, True, tool_layout)
             self.add_tool("resources/unselect.png", "取消选择", self.unselection_status, True, tool_layout)
             self.add_tool("resources/label.png", "标注", self.get_label, False, tool_layout)
+            self.add_tool("resources/delete.png", "删除标注", self.on_delete_selected_label, False, tool_layout)
             tool_layout.addStretch()
             
             splitter.addWidget(self.toolpanel)
 
-        # 图像显示区：GLWidget
         gl_widget = GLWidget(page_widget, mainwindow=self)
-        splitter.addWidget(gl_widget)  # 右侧显示图像区域
+        splitter.addWidget(gl_widget)
         setattr(page_widget, 'gl_widget', gl_widget)
         if page == 1 or page == 2:
             setattr(page_widget,'list_widget', file_list_widget)
 
         textWidget = QWidget()
         if page == 3:
+            self.label_panel = CollapsibleLabelPanel()
+            splitter.insertWidget(0, self.label_panel)
             splitter.addWidget(textWidget)
             splitter.setSizes([int(self.width() * 0.8), int(self.width() * 0.2)])
             
@@ -258,6 +297,7 @@ class MainWindow(QMainWindow):
             input_layout.setStretch(1, 1)
             textlayout.addLayout(input_layout)
             send_button.clicked.connect(self.send_message)
+            self.label_panel.navigate_requested.connect(self.renderthread.navigate_to)
         elif page == 2:
             splitter.widget(1).setFixedWidth(30)
             splitter.setSizes([int(self.width() * 0.17), 30, int(self.width() * 0.7)])
@@ -268,6 +308,8 @@ class MainWindow(QMainWindow):
         return page_widget
     
     def on_tab_changed(self, index):
+        self.renderthread.hide_label_bbox()
+        self._current_label_index = -1
         if index == 0:
             self.set_image()
             self.current_gl = getattr(self.page1, 'gl_widget', None)
@@ -288,6 +330,8 @@ class MainWindow(QMainWindow):
             self.choose_action.setEnabled(True)
             self.unchoose_action.setEnabled(True)
             self.label_action.setEnabled(True)
+            self.delete_label_action.setEnabled(True)
+            self.update_current_list()
         elif index == 2:
             self.set_3DGS_RGB()
             self.current_gl = getattr(self.page3, 'gl_widget', None)
@@ -325,12 +369,15 @@ class MainWindow(QMainWindow):
         self.choose_action = QAction("选择", self)
         self.unchoose_action = QAction("取消选择", self)
         self.label_action = QAction("标注", self)
+        self.delete_label_action = QAction("删除标注", self)
         self.choose_action.triggered.connect(self.tool_buttons[0].click)
         self.unchoose_action.triggered.connect(self.tool_buttons[1].click)
         self.label_action.triggered.connect(self.tool_buttons[2].click)
+        self.delete_label_action.triggered.connect(self.tool_buttons[3].click)
         pcd_menu.addAction(self.choose_action)
         pcd_menu.addAction(self.unchoose_action)
         pcd_menu.addAction(self.label_action)
+        pcd_menu.addAction(self.delete_label_action)
         
         language_menu = option_menu.addMenu("语言")
         lang_group = QActionGroup(self)
@@ -347,6 +394,7 @@ class MainWindow(QMainWindow):
         self.choose_action.setEnabled(False)
         self.unchoose_action.setEnabled(False)
         self.label_action.setEnabled(False)
+        self.delete_label_action.setEnabled(False)
         
     def change_language(self, language):
         print(f"change language to {language}")
@@ -358,6 +406,7 @@ class MainWindow(QMainWindow):
             self.renderthread.get_images() # get all the images in thread
 
     def add_Image_names(self, images:list[str]):
+        self.current_list.clear()
         for image in images:
             item = QListWidgetItem(os.path.basename(image))
             item.setData(Qt.UserRole, image)
@@ -379,10 +428,16 @@ class MainWindow(QMainWindow):
 
     def on_item_clicked(self, item):
         if self.current_page == self.page1:
-            image = item.data(Qt.UserRole)   # 取完整路径
+            image = item.data(Qt.UserRole)
             self.renderthread.set_current_image(image)
         elif self.current_page == self.page2:
-            pass
+            index = item.data(Qt.UserRole)
+            if index == self._current_label_index:
+                self.renderthread.hide_label_bbox()
+                self._current_label_index = -1
+            else:
+                self.renderthread.show_label_bbox(index)
+                self._current_label_index = index
         elif self.current_page == self.page3:
             pass
         
@@ -448,6 +503,9 @@ class MainWindow(QMainWindow):
                 item.setData(Qt.UserRole, index)
                 self.current_list.addItem(item)
             self.current_list.itemClicked.connect(self.on_item_clicked)
+            
+        if hasattr(self, 'label_panel'):
+            self.label_panel.update_labels(self.renderthread.pcd_labels)
         
     def eventFilter(self, source, event):
         if self.current_page == self.page1:
@@ -718,3 +776,40 @@ class MainWindow(QMainWindow):
         self.video_window = VideoWindow(os.path.join(self.renderthread.project_folder, "temp", "video_images"), self)
         self.video_window.finish_signal.connect(self.renderthread.video_frames_got)
         self.video_window.show()
+        
+    def on_delete_selected_image(self):
+        if self.current_page != self.page1:
+            return
+        row = self.current_list.currentRow()
+        if row < 0:
+            return
+        self.renderthread.remove_image(row)
+        
+    def on_delete_all_images(self):
+        if self.current_page != self.page1:
+            return
+        self.renderthread.remove_all_images()
+        
+    def on_delete_selected_label(self):
+        if self.current_page != self.page2:
+            return
+        item = self.current_list.currentItem()
+        if item is None:
+            return
+        index = item.data(Qt.UserRole)
+        self.renderthread.hide_label_bbox()
+        self._current_label_index = -1
+        del self.renderthread.pcd_labels[index]
+        self.renderthread.agentthread.set_pcd_labels(self.renderthread.pcd_labels)
+        self.renderthread.project.set_pcd_labels(self.renderthread.pcd_labels)
+        self.update_current_list()
+        
+    def on_delete_all_labels(self):
+        if self.current_page != self.page2:
+            return
+        self.renderthread.hide_label_bbox()
+        self._current_label_index = -1
+        self.renderthread.pcd_labels.clear()
+        self.renderthread.agentthread.set_pcd_labels([])
+        self.renderthread.project.set_pcd_labels([])
+        self.update_current_list()
