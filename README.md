@@ -20,7 +20,7 @@ A local software and cloud service system that integrates 3D functionalities inc
 
 ## 🎞️ Demonstration
 ### Demo Video (in Chinese)
-[Youtube Video Link](https://www.youtube.com/watch?v=kMFJSooMu10)
+[Youtube Video Link](https://www.youtube.com/watch?v=epEAVYEmF5M)
 
 ## 🏠 Sturcture
 System Structure:<br>
